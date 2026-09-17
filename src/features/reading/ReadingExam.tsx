@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
 import type { StudentQuestion, StudentTestPackage } from '../../test-schema/types';
 import { GapFillQuestion } from '../../question-types/GapFillQuestion';
@@ -41,6 +42,7 @@ function renderQuestion(
 
 export function ReadingExam({ test }: ReadingExamProps) {
   const { state, dispatch } = useExam();
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const readingModule = test.modules[0];
   const allQuestions = readingModule.sections.flatMap((section) =>
     section.questionGroups.flatMap((group) => group.questions),
@@ -62,8 +64,25 @@ export function ReadingExam({ test }: ReadingExamProps) {
     throw new Error('Current question is not present in the Reading test');
   }
 
+  useEffect(() => {
+    setNowMs(Date.now());
+    if (state.status !== 'ACTIVE') return;
+
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1_000);
+
+    return () => window.clearInterval(timerId);
+  }, [state.startedAtMs, state.status]);
+
   const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
-  const timeLeft = remainingSeconds(state, Date.now());
+  const timeLeft = remainingSeconds(state, nowMs);
+
+  useEffect(() => {
+    if (state.status === 'ACTIVE' && timeLeft === 0) {
+      dispatch({ type: 'SUBMIT', submittedAtMs: nowMs });
+    }
+  }, [dispatch, nowMs, state.status, timeLeft]);
 
   return (
     <main className="exam-shell">
@@ -101,6 +120,7 @@ export function ReadingExam({ test }: ReadingExamProps) {
                 className={`review-button${isReviewed ? ' active' : ''}`}
                 aria-label={`${isReviewed ? 'Unmark' : 'Mark'} question ${activeQuestion.number} for review`}
                 onClick={() => dispatch({ type: 'TOGGLE_REVIEW', questionId: activeQuestion.id })}
+                disabled={state.status !== 'ACTIVE'}
               >
                 {isReviewed ? 'Marked for review' : 'Mark for review'}
               </button>
