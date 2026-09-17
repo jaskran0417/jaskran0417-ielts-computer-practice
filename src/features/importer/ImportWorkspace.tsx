@@ -175,7 +175,7 @@ export function ImportWorkspace({ processFile, onPublish }: ImportWorkspaceProps
                   >
                     <div className="verification-row-main">
                       <div className="verification-row-heading">
-                        <span className="field-kind">{field.kind.replaceAll('_', ' ')}</span>
+                        <span className="field-kind">{field.kind.replace(/_/g, ' ')}</span>
                         <VerificationBadge state={field.verification.state} />
                       </div>
                       <strong className="field-key">{field.id}</strong>
