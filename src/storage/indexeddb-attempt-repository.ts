@@ -29,6 +29,18 @@ export class IndexedDbAttemptRepository implements AttemptRepository {
     return attempt ?? null;
   }
 
+  async loadActiveAttempt(testVersionId: string): Promise<ExamAttemptState | null> {
+    const database = await this.open();
+    const attempts = await database.getAll('attempts');
+    database.close();
+
+    const activeAttempts = attempts
+      .filter((attempt) => attempt.testVersionId === testVersionId && attempt.status === 'ACTIVE')
+      .sort((left, right) => right.startedAtMs - left.startedAtMs);
+
+    return activeAttempts[0] ?? null;
+  }
+
   async saveAttempt(attempt: ExamAttemptState): Promise<void> {
     const database = await this.open();
     await database.put('attempts', attempt);
