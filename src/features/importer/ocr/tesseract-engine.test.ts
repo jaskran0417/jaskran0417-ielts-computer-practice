@@ -53,6 +53,25 @@ describe('TesseractOcrEngine', () => {
     expect(result).toEqual({ text: 'library', confidence: 93 });
   });
 
+  it('uses same-origin packaged OCR assets by default', async () => {
+    const records = { createOptions: [] as Array<Record<string, string>>, recognized: [] as Blob[], terminated: 0 };
+    const engine = new TesseractOcrEngine(
+      undefined,
+      createFactory(records),
+      async (image) => image,
+    );
+
+    await engine.recognize(new Blob(['original']), { pass: 'A' });
+
+    expect(records.createOptions).toHaveLength(1);
+    expect(records.createOptions[0]?.workerPath).toMatch(/^\/ocr\/worker\.min\.js$/);
+    expect(records.createOptions[0]?.corePath).toBe('/ocr/core');
+    expect(records.createOptions[0]?.langPath).toBe('/ocr/lang');
+    expect(Object.values(records.createOptions[0] ?? {})).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^https?:\/\//i)]),
+    );
+  });
+
   it('terminates the worker even when recognition fails', async () => {
     let terminated = 0;
     const factory: TesseractWorkerFactory = async () => ({
