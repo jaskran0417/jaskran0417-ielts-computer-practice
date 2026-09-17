@@ -43,3 +43,30 @@ export interface AuditSummary {
   technicalInterruptionCount: number;
   technicalInterruptedMs: number;
 }
+
+export type WritingResultState =
+  | 'NOT_INCLUDED'
+  | 'COMPLETED_PENDING_MARKING'
+  | 'COMPLETED_NOT_UPLOADED'
+  | 'MARKED';
+
+export interface ScoredModuleResult {
+  module: 'LISTENING' | 'READING';
+  rawScore?: number;
+  totalQuestions?: number;
+  band?: number;
+}
+
+export interface WritingModuleResult {
+  module: 'WRITING';
+  state: WritingResultState;
+  band?: number;
+  delivery?: WritingDelivery;
+}
+
+export interface SessionResultSummary {
+  selectedModules: SessionModule[];
+  modules: Array<ScoredModuleResult | WritingModuleResult>;
+  overallBand: number | null;
+  overallStatus: 'NOT_APPLICABLE' | 'PENDING' | 'COMPLETE';
+}
