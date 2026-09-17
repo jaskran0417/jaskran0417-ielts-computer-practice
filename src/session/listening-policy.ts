@@ -8,11 +8,24 @@ export interface ListeningPermissions {
   seek: boolean;
 }
 
-export function listeningPermissions(_mode: SessionMode): ListeningPermissions {
-  return { pause: true, replay: true, seek: true };
+export function listeningPermissions(mode: SessionMode): ListeningPermissions {
+  const allowed = mode === 'PRACTICE';
+  return { pause: allowed, replay: allowed, seek: allowed };
 }
 
 export function assertListeningActionAllowed(
-  _mode: SessionMode,
-  _action: ListeningCandidateAction,
-): void {}
+  mode: SessionMode,
+  action: ListeningCandidateAction,
+): void {
+  const permissions = listeningPermissions(mode);
+  const allowed =
+    action === 'PAUSE'
+      ? permissions.pause
+      : action === 'REPLAY'
+        ? permissions.replay
+        : permissions.seek;
+
+  if (!allowed) {
+    throw new Error(`Mock Listening does not allow candidate ${action.toLowerCase()}`);
+  }
+}
