@@ -47,6 +47,10 @@ function writingStatus(result: WritingModuleResult): string {
   }
 }
 
+function countLabel(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function SessionResult({ summary, audit }: SessionResultProps) {
   const resultByModule = new Map(summary.modules.map((result) => [result.module, result]));
   const hasAudit = Boolean(
@@ -172,17 +176,19 @@ export function SessionResult({ summary, audit }: SessionResultProps) {
           </div>
           <div className="audit-metrics">
             <div>
-              <strong>{audit.practicePauseCount}</strong>
-              <span>{audit.practicePauseCount === 1 ? 'practice pause' : 'practice pauses'}</span>
+              <strong>
+                {countLabel(audit.practicePauseCount, 'practice pause', 'practice pauses')}
+              </strong>
               <small>{formatDuration(audit.practicePausedMs)} paused</small>
             </div>
             <div>
-              <strong>{audit.technicalInterruptionCount}</strong>
-              <span>
-                {audit.technicalInterruptionCount === 1
-                  ? 'technical interruption'
-                  : 'technical interruptions'}
-              </span>
+              <strong>
+                {countLabel(
+                  audit.technicalInterruptionCount,
+                  'technical interruption',
+                  'technical interruptions',
+                )}
+              </strong>
               <small>{formatDuration(audit.technicalInterruptedMs)} interrupted</small>
             </div>
           </div>
