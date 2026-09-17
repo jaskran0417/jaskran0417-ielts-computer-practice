@@ -15,3 +15,31 @@ export interface SessionConfig {
 export type SessionValidationResult =
   | { ok: true; value: SessionConfig }
   | { ok: false; errors: string[] };
+
+export type AttemptAuditEvent =
+  | {
+      id: string;
+      type: 'PRACTICE_PAUSE';
+      module: SessionModule;
+      startedAtMs: number;
+      endedAtMs: number;
+      audioPositionSeconds?: number;
+    }
+  | {
+      id: string;
+      type: 'TECHNICAL_INTERRUPTION';
+      module: SessionModule;
+      startedAtMs: number;
+      endedAtMs: number;
+      lastSecureAudioPositionSeconds?: number;
+      recoveryAudioPositionSeconds?: number;
+      source: 'SYSTEM' | 'TEACHER';
+      note?: string;
+    };
+
+export interface AuditSummary {
+  practicePauseCount: number;
+  practicePausedMs: number;
+  technicalInterruptionCount: number;
+  technicalInterruptedMs: number;
+}
