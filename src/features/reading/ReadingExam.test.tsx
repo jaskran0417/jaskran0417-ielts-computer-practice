@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../../app/App';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('Reading exam', () => {
   it('answers, flags, navigates, and returns to a question', async () => {
@@ -22,5 +26,19 @@ describe('Reading exam', () => {
 
     await user.click(screen.getByRole('button', { name: 'Question 1' }));
     expect(screen.getByRole('radio', { name: /British Museum/i })).toBeChecked();
+  });
+
+  it('updates the visible timer while the student is idle', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-17T12:00:00Z'));
+
+    render(<App />);
+    expect(screen.getByText('60:00')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+
+    expect(screen.getByText('59:59')).toBeInTheDocument();
   });
 });
