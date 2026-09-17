@@ -11,7 +11,13 @@ export interface NormalizedRect {
   height: number;
 }
 
-export type ExtractionMethod = 'PDF_TEXT' | 'OCR_A' | 'OCR_B' | 'MANUAL';
+export type ExtractionMethod =
+  | 'PDF_TEXT'
+  | 'OCR_A'
+  | 'OCR_B'
+  | 'ANSWER_KEY_A'
+  | 'ANSWER_KEY_B'
+  | 'MANUAL';
 
 export interface SourceEvidence {
   documentId: string;
