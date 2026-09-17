@@ -14,7 +14,7 @@ describe('parseAnswerKey', () => {
       { questionNumber: 2, answer: 'B' },
       { questionNumber: 3, answer: 'TRUE' },
     ]);
-    expect(result.verification.map((item) => item.state)).toEqual([
+    expect(result.verification.map((item) => item.result.state)).toEqual([
       'VERIFIED',
       'VERIFIED',
       'VERIFIED',
