@@ -113,6 +113,7 @@ export function SessionBuilder({
                       key={option.value}
                     >
                       <input
+                        aria-label={option.label}
                         type="checkbox"
                         checked={checked}
                         onChange={(event) => toggleModule(option.value, event.target.checked)}
@@ -139,6 +140,7 @@ export function SessionBuilder({
               <div className="segmented-control two-up">
                 <label className={mode === 'PRACTICE' ? 'selected' : ''}>
                   <input
+                    aria-label="Practice"
                     type="radio"
                     name="session-mode"
                     value="PRACTICE"
@@ -152,6 +154,7 @@ export function SessionBuilder({
                 </label>
                 <label className={mode === 'MOCK' ? 'selected' : ''}>
                   <input
+                    aria-label="Mock test"
                     type="radio"
                     name="session-mode"
                     value="MOCK"
@@ -171,28 +174,32 @@ export function SessionBuilder({
                 <legend>Writing delivery</legend>
                 <p className="field-help">Paper writing can finish without uploading handwritten pages.</p>
                 <div className="segmented-control two-up compact">
-                  {(['COMPUTER', 'PAPER'] as const).map((delivery) => (
-                    <label
-                      key={delivery}
-                      className={writingDelivery === delivery ? 'selected' : ''}
-                    >
-                      <input
-                        type="radio"
-                        name="writing-delivery"
-                        value={delivery}
-                        checked={writingDelivery === delivery}
-                        onChange={() => setWritingDelivery(delivery)}
-                      />
-                      <span>
-                        <strong>{delivery === 'COMPUTER' ? 'Computer' : 'Paper'}</strong>
-                        <small>
-                          {delivery === 'COMPUTER'
-                            ? 'Type Task 1 and Task 2 in the app.'
-                            : 'Show prompts and timer; handwriting stays optional to upload.'}
-                        </small>
-                      </span>
-                    </label>
-                  ))}
+                  {(['COMPUTER', 'PAPER'] as const).map((delivery) => {
+                    const deliveryLabel = delivery === 'COMPUTER' ? 'Computer' : 'Paper';
+                    return (
+                      <label
+                        key={delivery}
+                        className={writingDelivery === delivery ? 'selected' : ''}
+                      >
+                        <input
+                          aria-label={deliveryLabel}
+                          type="radio"
+                          name="writing-delivery"
+                          value={delivery}
+                          checked={writingDelivery === delivery}
+                          onChange={() => setWritingDelivery(delivery)}
+                        />
+                        <span>
+                          <strong>{deliveryLabel}</strong>
+                          <small>
+                            {delivery === 'COMPUTER'
+                              ? 'Type Task 1 and Task 2 in the app.'
+                              : 'Show prompts and timer; handwriting stays optional to upload.'}
+                          </small>
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
             ) : null}
