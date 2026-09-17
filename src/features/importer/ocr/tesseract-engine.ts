@@ -64,11 +64,9 @@ export const preprocessOcrBlob: OcrBlobPreprocessor = async (image, pass) => {
       { width: source.width, height: source.height, data: source.data },
       pass,
     );
-    context.putImageData(
-      new ImageData(processed.data, processed.width, processed.height),
-      0,
-      0,
-    );
+    const browserImageData = context.createImageData(processed.width, processed.height);
+    browserImageData.data.set(processed.data);
+    context.putImageData(browserImageData, 0, 0);
     return canvasToBlob(canvas);
   } finally {
     bitmap.close();
