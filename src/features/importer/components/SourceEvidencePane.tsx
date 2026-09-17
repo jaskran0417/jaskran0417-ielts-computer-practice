@@ -7,7 +7,7 @@ interface SourceEvidencePaneProps {
 }
 
 function methodLabel(method: ExtractionPass['evidence']['method']): string {
-  return method.replaceAll('_', ' ');
+  return method.replace(/_/g, ' ');
 }
 
 function EvidencePass({
@@ -28,8 +28,9 @@ function EvidencePass({
         <span>{methodLabel(pass.evidence.method)}</span>
       </div>
       <p className="evidence-meta">
-        {document?.name ?? pass.evidence.documentId} · Page {pass.evidence.pageNumber}
-        {pass.confidence === null ? '' : ` · ${Math.round(pass.confidence)}% confidence`}
+        <span>{document?.name ?? pass.evidence.documentId}</span>
+        <span>Page {pass.evidence.pageNumber}</span>
+        {pass.confidence === null ? null : <span>{Math.round(pass.confidence)}% confidence</span>}
       </p>
       <blockquote>{pass.value || 'No text extracted'}</blockquote>
     </article>
