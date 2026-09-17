@@ -1,5 +1,6 @@
 import type { OcrEngine, OcrResult } from './ocr-engine';
 import { preprocessPixels } from './image-preprocess';
+import { resolveOfflineOcrAssetPaths } from './offline-assets';
 
 export interface TesseractAssetPaths {
   workerPath: string;
@@ -75,7 +76,7 @@ export const preprocessOcrBlob: OcrBlobPreprocessor = async (image, pass) => {
 
 export class TesseractOcrEngine implements OcrEngine {
   constructor(
-    private readonly paths: TesseractAssetPaths,
+    private readonly paths: TesseractAssetPaths = resolveOfflineOcrAssetPaths(),
     private readonly workerFactory: TesseractWorkerFactory = defaultWorkerFactory,
     private readonly preprocess: OcrBlobPreprocessor = preprocessOcrBlob,
   ) {}
