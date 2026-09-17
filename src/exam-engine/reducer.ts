@@ -1,6 +1,10 @@
 import type { ExamAction, ExamAttemptState } from './types';
 
 export function examReducer(state: ExamAttemptState, action: ExamAction): ExamAttemptState {
+  if (action.type === 'RESTORE_ATTEMPT') {
+    return action.state;
+  }
+
   if (state.status === 'SUBMITTED') {
     return state;
   }
