@@ -43,7 +43,8 @@ export function SourceEvidencePane({
       <div className="evidence-heading">
         <div>
           <p className="page-eyebrow">Source evidence</p>
-          <h2>{source?.name ?? 'Imported source'}</h2>
+          <h2>Selected field evidence</h2>
+          {source ? <small>{source.kind} source</small> : null}
         </div>
         {pages.length === 1 ? <span className="evidence-page">Page {pages[0]}</span> : null}
         {pages.length > 1 ? <span className="evidence-page">Pages {pages.join(', ')}</span> : null}
