@@ -1,9 +1,11 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import App from '../../app/App';
 import type { ExamAttemptState } from '../../exam-engine/types';
 import type { AttemptRepository } from '../../storage/attempt-repository';
+import { sampleReadingTest } from '../../test-schema/sample-reading';
+import { ExamProvider } from '../exam/ExamProvider';
+import { ReadingExam } from './ReadingExam';
 
 class EmptyAttemptRepository implements AttemptRepository {
   async loadAttempt() {
@@ -19,6 +21,14 @@ class EmptyAttemptRepository implements AttemptRepository {
   async deleteAttempt() {}
 }
 
+function renderReading(repository: AttemptRepository, nowMs?: number) {
+  return render(
+    <ExamProvider test={sampleReadingTest} repository={repository} nowMs={nowMs}>
+      <ReadingExam test={sampleReadingTest} />
+    </ExamProvider>,
+  );
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -26,7 +36,7 @@ afterEach(() => {
 describe('Reading exam', () => {
   it('answers, flags, navigates, and returns to a question', async () => {
     const user = userEvent.setup();
-    render(<App repository={new EmptyAttemptRepository()} />);
+    renderReading(new EmptyAttemptRepository());
 
     expect(await screen.findByRole('heading', { name: 'Reading' })).toBeInTheDocument();
     expect(screen.getByText(/Urban green spaces/i)).toBeInTheDocument();
@@ -49,7 +59,7 @@ describe('Reading exam', () => {
     vi.setSystemTime(new Date('2026-09-17T12:00:00Z'));
     const nowMs = Date.now();
 
-    render(<App repository={new EmptyAttemptRepository()} nowMs={nowMs} />);
+    renderReading(new EmptyAttemptRepository(), nowMs);
 
     await act(async () => {
       await Promise.resolve();
@@ -69,7 +79,7 @@ describe('Reading exam', () => {
     vi.setSystemTime(new Date('2026-09-17T12:00:00Z'));
     const nowMs = Date.now();
 
-    render(<App repository={new EmptyAttemptRepository()} nowMs={nowMs} />);
+    renderReading(new EmptyAttemptRepository(), nowMs);
 
     await act(async () => {
       await Promise.resolve();
