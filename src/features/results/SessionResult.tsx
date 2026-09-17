@@ -5,6 +5,7 @@ import type {
   SessionResultSummary,
   WritingModuleResult,
 } from '../../session/types';
+import './SessionResult.css';
 
 interface SessionResultProps {
   summary: SessionResultSummary;
@@ -84,14 +85,25 @@ export function SessionResult({ summary, audit }: SessionResultProps) {
             const writing: WritingModuleResult =
               result?.module === 'WRITING'
                 ? result
-                : { module: 'WRITING', state: selected ? 'COMPLETED_PENDING_MARKING' : 'NOT_INCLUDED' };
+                : {
+                    module: 'WRITING',
+                    state: selected ? 'COMPLETED_PENDING_MARKING' : 'NOT_INCLUDED',
+                  };
             return (
               <article className="result-card" key={module}>
                 <div className="result-card-header">
-                  <span className="result-module-mark" aria-hidden="true">W</span>
+                  <span className="result-module-mark" aria-hidden="true">
+                    W
+                  </span>
                   <div>
                     <h2>Writing</h2>
-                    <span>{writing.delivery === 'PAPER' ? 'Paper delivery' : writing.delivery === 'COMPUTER' ? 'Computer delivery' : 'Module status'}</span>
+                    <span>
+                      {writing.delivery === 'PAPER'
+                        ? 'Paper delivery'
+                        : writing.delivery === 'COMPUTER'
+                          ? 'Computer delivery'
+                          : 'Module status'}
+                    </span>
                   </div>
                 </div>
                 <p
@@ -108,7 +120,9 @@ export function SessionResult({ summary, audit }: SessionResultProps) {
           return (
             <article className="result-card" key={module}>
               <div className="result-card-header">
-                <span className="result-module-mark" aria-hidden="true">{module[0]}</span>
+                <span className="result-module-mark" aria-hidden="true">
+                  {module[0]}
+                </span>
                 <div>
                   <h2>{moduleLabel(module)}</h2>
                   <span>{selected ? 'Scored module' : 'Not selected'}</span>
@@ -152,7 +166,9 @@ export function SessionResult({ summary, audit }: SessionResultProps) {
           <div>
             <p className="section-kicker">Attempt conditions</p>
             <h2 id="attempt-conditions-title">Session activity</h2>
-            <p>Practice controls and technical interruptions are reported separately and do not alter the academic score.</p>
+            <p>
+              Practice controls and technical interruptions are reported separately and do not alter the academic score.
+            </p>
           </div>
           <div className="audit-metrics">
             <div>
