@@ -90,9 +90,11 @@ The Test Player must never depend directly on PDFs, OCR, or import formats. All 
 - TypeScript
 - Vite
 - CSS with explicit browser-compatibility constraints
-- state management chosen during implementation based on engine needs; avoid unnecessary global-state libraries
+- a pure TypeScript exam state machine/reducer with a small React Context + `useReducer` adapter; no external global-state library initially
 - IndexedDB for resilient local attempt persistence
 - Supabase JS client for authentication and authorized API access
+
+The domain exam engine must remain framework-light and testable without rendering React. UI components dispatch typed domain actions and consume derived state. Persistence and remote synchronization are adapters around the engine rather than responsibilities mixed into presentation components.
 
 Reason for Vite/React rather than a heavier server-rendering framework: the product is primarily a rich client-side exam application involving timers, audio, independent scrolling, highlight state, question-state transitions, autosave, and document processing.
 
@@ -539,7 +541,7 @@ The application should support:
 - scoring rules;
 - timer calculations;
 - schema validation;
-- state reducers/state machine;
+- state reducer/state machine;
 - verification decision logic.
 
 ### Integration tests
