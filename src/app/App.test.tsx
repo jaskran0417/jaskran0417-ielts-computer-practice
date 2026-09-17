@@ -28,6 +28,17 @@ describe('App session flow', () => {
     expect(screen.getByText('Exam Studio')).toBeInTheDocument();
   });
 
+  it('opens the importer as a real workspace section', async () => {
+    const user = userEvent.setup();
+    render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
+
+    await user.click(screen.getByRole('button', { name: /Import/i }));
+
+    expect(screen.getByRole('heading', { name: 'Import and verify test material' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sessions/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Create a test session' })).not.toBeInTheDocument();
+  });
+
   it('launches Reading-only into the focused existing exam player', async () => {
     const user = userEvent.setup();
     render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
