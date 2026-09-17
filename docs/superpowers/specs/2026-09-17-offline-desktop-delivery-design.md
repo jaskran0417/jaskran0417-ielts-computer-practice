@@ -1,7 +1,7 @@
 # Offline + Desktop Delivery Addendum
 
 Date: 2026-09-17
-Status: Proposed architecture amendment awaiting user review
+Status: Approved architecture amendment
 Repository: `jaskran0417/jaskran0417-ielts-computer-practice`
 Related spec: `docs/superpowers/specs/2026-09-17-ielts-practice-platform-design.md`
 
@@ -13,9 +13,29 @@ Extend the approved IELTS practice platform so the same exam engine can run in t
 2. installable offline-capable PWA;
 3. Windows desktop application (`.exe`).
 
-Internet must not be required for taking a previously prepared local test, importing local PDFs/images/audio, or using the core exam UI. Internet is optional for cloud sync, backup, remote publishing, optional external answer verification, and multi-device access.
+Internet must not be required for taking a previously prepared local test, importing local PDFs/images/audio, or using the core exam UI. Internet remains fully supported on every platform, including Windows 7, for cloud sync, backup, remote publishing, optional external answer verification, website imports, and multi-device access.
 
-## 2. Shared-core architecture
+## 2. Feature-parity rule
+
+Modern Windows and Windows 7 must expose the same application-level feature set. The Windows 7 build is not an intentionally reduced or offline-only edition.
+
+Both desktop builds must support, where a feature is enabled by the application configuration:
+
+- Reading, Listening, and Writing;
+- local and cloud test libraries;
+- online and offline operation;
+- local PDF/image/audio import;
+- website/URL import when online;
+- Supabase synchronization;
+- local and cloud results;
+- `.exam-pack` import/export;
+- optional online verification;
+- admin/teacher workflows;
+- student workflows.
+
+Differences between modern Windows and Windows 7 are restricted to runtime implementation, browser-engine age, packaging, and compatibility workarounds. Domain semantics, test schema, UI behavior, storage format, and sync protocol remain shared.
+
+## 3. Shared-core architecture
 
 ```text
                          SHARED CORE
@@ -40,9 +60,9 @@ Internet must not be required for taking a previously prepared local test, impor
                       Supabase
 ```
 
-The application must not fork into separate exam implementations. Reading, Listening, Writing, question navigation, timers, review state, highlighting, notes, and scoring semantics remain shared code.
+The application must not fork into separate exam implementations. Reading, Listening, Writing, question navigation, timers, review state, highlighting, notes, scoring semantics, sync semantics, and package formats remain shared code.
 
-## 3. Website mode
+## 4. Website mode
 
 The normal website provides:
 
@@ -54,7 +74,7 @@ The normal website provides:
 
 The web application must continue operating during temporary internet loss once required test assets are already local.
 
-## 4. PWA mode
+## 5. PWA mode
 
 The browser application will be installable as a Progressive Web App where the browser supports it.
 
@@ -69,7 +89,7 @@ PWA responsibilities:
 
 The PWA is the preferred lightweight offline option because it reuses the website directly and requires no separate desktop installer.
 
-## 5. Desktop application mode
+## 6. Desktop application mode
 
 The desktop application will package the same React/Vite frontend and shared domain engine in a desktop shell.
 
@@ -77,13 +97,15 @@ The desktop application will package the same React/Vite frontend and shared dom
 
 Use a currently supported Electron release for supported Windows versions.
 
-### Windows 7 legacy build
+### Windows 7 compatibility build
 
-Use a separate legacy desktop packaging profile based on Electron 22.x, because Electron 22 is the final Electron major that runs on Windows 7/8/8.1. Electron 23+ requires Windows 10 or later.
+Use a separate packaging profile based on Electron 22.x, because Electron 22 is the final Electron major that runs on Windows 7/8/8.1. Electron 23+ requires Windows 10 or later.
 
-The legacy Windows 7 build must be clearly labeled as a compatibility build. It must not be represented as receiving current Chromium security updates.
+The Windows 7 build must still support normal HTTPS networking, Supabase synchronization, remote downloads, website imports through controlled application fetch flows, and all other online application features. It must not be treated as offline-only.
 
-The desktop application should support:
+The build must be clearly labeled as a compatibility build because its embedded Chromium runtime no longer receives current Chromium security updates.
+
+Both desktop builds should support:
 
 - `.exe` installer;
 - optional portable build if packaging remains reliable;
@@ -91,10 +113,12 @@ The desktop application should support:
 - local import from PDF/images/audio;
 - local source evidence storage;
 - local attempts/results;
-- optional later cloud synchronization;
+- cloud synchronization while online;
+- remote test download/upload;
+- website/URL source import through controlled adapters;
 - opening local test-package files directly.
 
-## 6. Local data abstraction
+## 7. Local data abstraction
 
 The domain layer must not depend directly on Supabase.
 
@@ -125,7 +149,7 @@ Implementations:
 - desktop: local filesystem plus a small local database/index;
 - cloud: Supabase adapters.
 
-## 7. Test package format
+## 8. Test package format
 
 Add a portable package format, working name: `.exam-pack`.
 
@@ -153,7 +177,7 @@ The manifest includes:
 
 The package format must be deterministic and versioned so future application versions can migrate older packages safely.
 
-## 8. Offline import
+## 9. Offline import
 
 Local import must work without internet for:
 
@@ -168,7 +192,7 @@ OCR language data/model files required for offline OCR should be downloadable on
 
 Optional internet lookup is never required for import completion.
 
-## 9. Offline scoring and answer-key security
+## 10. Offline scoring and answer-key security
 
 There are two scoring profiles.
 
@@ -187,7 +211,7 @@ There are two scoring profiles.
 
 The UI/admin flow must make this trade-off explicit when exporting a fully offline package.
 
-## 10. Offline attempt behavior
+## 11. Offline attempt behavior
 
 Once a test starts locally:
 
@@ -198,7 +222,7 @@ Once a test starts locally:
 - submission can be stored as `PENDING_SYNC` if no network exists;
 - later sync uses idempotent identifiers so an attempt cannot be duplicated.
 
-## 11. Sync model
+## 12. Sync model
 
 Cloud sync is optional and asynchronous.
 
@@ -212,44 +236,40 @@ Each syncable entity includes:
 
 Published test versions remain immutable. Conflicts in mutable admin drafts must surface for review rather than silently overwriting newer data.
 
-## 12. Import sources from websites
+## 13. Import sources from websites
 
 When online, administrators may also import from a URL where legally and technically permitted.
 
-A URL import is simply another source adapter:
+A URL import is another source adapter:
 
 ```text
-URL -> fetch/download -> detect file/content type -> normal import pipeline
+URL -> controlled fetch/download -> detect file/content type -> normal import pipeline
 ```
+
+The desktop shell must not become a general-purpose embedded browser. Normal external websites remain accessible separately in the user's installed browser; the application itself only fetches or opens external content through explicit, controlled flows.
 
 The system must not depend on remote scraping for core functionality, and it must respect copyright, authentication, and access restrictions.
 
-## 13. Deployment matrix
+## 14. Deployment matrix
 
 ```text
-Platform                 Online      Offline tests     Local import
--------------------------------------------------------------------
-Hosted website            Yes        After caching     Yes
-Installed PWA             Optional   Yes               Yes
-Modern Windows .exe       Optional   Yes               Yes
-Windows 7 legacy .exe     Optional   Yes               Yes
+Platform                 Online      Offline tests     Local import     Cloud sync
+--------------------------------------------------------------------------------
+Hosted website            Yes        After caching     Yes              Yes
+Installed PWA             Yes        Yes               Yes              Yes
+Modern Windows .exe       Yes        Yes               Yes              Yes
+Windows 7 .exe            Yes        Yes               Yes              Yes
 ```
 
-## 14. Windows 7 desktop caveat
+## 15. Windows 7 desktop caveat
 
-Electron 22 is the last Electron line supporting Windows 7. It embeds Chromium 108 and is end-of-life. The Windows 7 `.exe` therefore exists for functional compatibility, not modern browser security.
+Electron 22 is the last Electron line supporting Windows 7. It embeds an older Chromium engine and is end-of-life. This is a security-maintenance caveat, not a networking limitation.
 
-Recommended use for the Windows 7 desktop build:
+The Windows 7 application may connect to the internet normally for approved application features. The Electron shell must still disable unrestricted embedded navigation, untrusted popups, remote code execution, Node integration in renderer pages, and unnecessary desktop privileges.
 
-- local/private institute network;
-- offline exams;
-- trusted local files;
-- minimal general web browsing inside the app;
-- no arbitrary external navigation.
+Users may separately use their installed Windows 7 browser for general web browsing; that is outside the application security boundary.
 
-The Electron shell must disable unrestricted navigation, remote content loading, Node integration in renderer pages, and unnecessary desktop privileges.
-
-## 15. Security boundary
+## 16. Security boundary
 
 Desktop packaging must follow a strict renderer/main-process boundary:
 
@@ -258,10 +278,11 @@ Desktop packaging must follow a strict renderer/main-process boundary:
 - context isolation enabled;
 - narrow preload bridge only for approved local file/database operations;
 - CSP applied to packaged pages;
-- arbitrary external URL navigation blocked;
+- arbitrary external URL navigation inside the app blocked;
+- application networking limited to explicit code paths and configured trusted services;
 - test packages validated by schema and checksums before import.
 
-## 16. Revised delivery order
+## 17. Revised delivery order
 
 ### Foundation
 
@@ -285,7 +306,7 @@ Add:
 
 This prevents desktop packaging from dictating the domain architecture while also avoiding a later rewrite for offline support.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 The offline/desktop extension is successful when:
 
@@ -297,5 +318,6 @@ The offline/desktop extension is successful when:
 6. the app/browser can restart and recover the attempt;
 7. a completed attempt can remain local or synchronize later;
 8. the same test runs through the website/PWA and desktop application with equivalent exam behavior;
-9. a Windows 7 compatibility build runs the exam UI using Electron 22.x;
-10. no desktop-specific code forks the core exam semantics.
+9. the Windows 7 compatibility build runs the same feature set using Electron 22.x;
+10. the Windows 7 compatibility build can use Supabase and approved internet features when online;
+11. no desktop-specific code forks the core exam semantics.
