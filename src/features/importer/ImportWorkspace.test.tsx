@@ -95,12 +95,16 @@ describe('ImportWorkspace', () => {
     expect(within(conflictRow).getByText('REVIEW_REQUIRED')).toBeInTheDocument();
     await user.click(within(conflictRow).getByRole('button', { name: 'Review question-1' }));
 
-    expect(screen.getByRole('heading', { name: 'Source evidence' })).toBeInTheDocument();
-    expect(screen.getAllByText('Page 2')).toHaveLength(2);
-    expect(screen.getByText('OCR A')).toBeInTheDocument();
-    expect(screen.getByText('OCR B')).toBeInTheDocument();
-    expect(screen.getByText('The library opens at 8.')).toBeInTheDocument();
-    expect(screen.getByText('The library opens at 9.')).toBeInTheDocument();
+    const evidenceHeading = screen.getByRole('heading', { name: 'Source evidence' });
+    const evidencePane = evidenceHeading.closest('section');
+    expect(evidencePane).not.toBeNull();
+    if (!evidencePane) throw new Error('Expected source evidence panel');
+    const evidence = within(evidencePane);
+    expect(evidence.getAllByText('Page 2')).toHaveLength(2);
+    expect(evidence.getByText('OCR A')).toBeInTheDocument();
+    expect(evidence.getByText('OCR B')).toBeInTheDocument();
+    expect(evidence.getByText('The library opens at 8.')).toBeInTheDocument();
+    expect(evidence.getByText('The library opens at 9.')).toBeInTheDocument();
 
     const editor = screen.getByRole('textbox', { name: 'Confirmed field value' });
     await user.clear(editor);
