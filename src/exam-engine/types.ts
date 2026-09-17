@@ -19,4 +19,5 @@ export type ExamAction =
   | { type: 'ANSWER_CHANGED'; questionId: string; value: AnswerValue }
   | { type: 'TOGGLE_REVIEW'; questionId: string }
   | { type: 'NAVIGATE'; questionId: string }
+  | { type: 'RESTORE_ATTEMPT'; state: ExamAttemptState }
   | { type: 'SUBMIT'; submittedAtMs: number };
