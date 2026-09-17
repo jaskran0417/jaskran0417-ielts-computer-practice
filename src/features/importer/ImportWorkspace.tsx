@@ -3,6 +3,7 @@ import type { ImportDraft, ImportFieldRecord } from './local/import-repository';
 import { ConflictEditor } from './components/ConflictEditor';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
 import { VerificationBadge } from './components/VerificationBadge';
+import './import-workspace.css';
 
 export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
 
