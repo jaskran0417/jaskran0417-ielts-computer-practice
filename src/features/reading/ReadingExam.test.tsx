@@ -63,4 +63,23 @@ describe('Reading exam', () => {
 
     expect(screen.getByText('59:59')).toBeInTheDocument();
   });
+
+  it('automatically locks the exam when time expires', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-17T12:00:00Z'));
+    const nowMs = Date.now();
+
+    render(<App repository={new EmptyAttemptRepository()} nowMs={nowMs} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(3_600_000);
+    });
+
+    expect(screen.getByText('00:00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mark question 1 for review' })).toBeDisabled();
+  });
 });
