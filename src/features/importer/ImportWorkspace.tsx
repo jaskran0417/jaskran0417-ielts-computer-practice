@@ -113,7 +113,7 @@ export function ImportWorkspace({ processFile, onPublish }: ImportWorkspaceProps
               <small>
                 {unresolvedCount === 0
                   ? 'All critical fields are resolved'
-                  : `${unresolvedCount} critical field${unresolvedCount === 1 ? '' : 's'} still need${unresolvedCount === 1 ? 's' : ''} review`}
+                  : `Resolve ${unresolvedCount} critical field${unresolvedCount === 1 ? '' : 's'} before publishing`}
               </small>
             ) : (
               <small>Nothing is published automatically</small>
