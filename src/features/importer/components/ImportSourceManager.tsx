@@ -46,9 +46,15 @@ export function ImportSourceManager({
   const [startPage, setStartPage] = useState('1');
   const [endPage, setEndPage] = useState('1');
 
+  const effectiveSourceDocumentId =
+    sourceDocumentId || bundle?.sourceDocuments[0]?.id || '';
+
   const selectedSource = useMemo(
-    () => bundle?.sourceDocuments.find((source) => source.id === sourceDocumentId) ?? null,
-    [bundle, sourceDocumentId],
+    () =>
+      bundle?.sourceDocuments.find(
+        (source) => source.id === effectiveSourceDocumentId,
+      ) ?? null,
+    [bundle, effectiveSourceDocumentId],
   );
 
   function handleFiles(event: ChangeEvent<HTMLInputElement>) {
@@ -125,7 +131,7 @@ export function ImportSourceManager({
             <span>Source file</span>
             <select
               aria-label="Source file"
-              value={sourceDocumentId || bundle.sourceDocuments[0]?.id || ''}
+              value={effectiveSourceDocumentId}
               onChange={(event) => setSourceDocumentId(event.target.value)}
             >
               {bundle.sourceDocuments.map((source) => (
