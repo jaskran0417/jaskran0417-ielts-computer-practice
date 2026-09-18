@@ -1,3 +1,4 @@
+import type { NormalizedRect } from '../domain';
 import type { SourceDocumentRecord } from '../local/import-repository';
 
 export type ImportModule = 'READING' | 'LISTENING' | 'WRITING';
@@ -36,6 +37,8 @@ export interface ImportBundle {
   title: string;
   sourceDocuments: SourceDocumentRecord[];
   assignments: ImportSourceAssignment[];
+  semanticConfirmations?: Record<string, string>;
+  visualAnchorConfirmations?: Record<string, NormalizedRect>;
   status: ImportBundleStatus;
   updatedAtMs: number;
 }
