@@ -5,7 +5,7 @@ import type {
   ReadingSourceBlock,
 } from './types';
 
-const PASSAGE_HEADING = /^\s*Passage\s+(\d+)\b/im;
+const PASSAGE_HEADING = /^\s*Passage\s+(\d+)\s*$/im;
 const QUESTION_RANGE = /Questions?\s+(\d+)\s*[-–]\s*(\d+)/gi;
 
 function passageTitle(text: string, passageNumber: number): string | null {
@@ -15,7 +15,24 @@ function passageTitle(text: string, passageNumber: number): string | null {
     .filter(Boolean);
 
   const headingIndex = lines.findIndex((line) =>
-    new RegExp(`^Passage\\s+${passageNumber}\\b`, 'i').test(line),
+    new RegExp(`^Passage\\s+${passageNumber}\\s*import type {
+  PassageOutline,
+  QuestionRangeOutline,
+  ReadingDocumentOutline,
+  ReadingSourceBlock,
+} from './types';
+
+const PASSAGE_HEADING = /^\s*Passage\s+(\d+)\s*$/im;
+const QUESTION_RANGE = /Questions?\s+(\d+)\s*[-–]\s*(\d+)/gi;
+
+function passageTitle(text: string, passageNumber: number): string | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const headingIndex = lines.findIndex((line) =>
+, 'i').test(line),
   );
 
   if (headingIndex < 0) return null;
