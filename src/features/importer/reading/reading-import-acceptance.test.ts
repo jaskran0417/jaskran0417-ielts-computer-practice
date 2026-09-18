@@ -6,6 +6,7 @@ import { parseAnswerKey } from '../answer-key/parse-answer-key';
 import { prepareReadingPublication } from '../publication/import-publication';
 import { buildSemanticReviewQueue } from '../review/semantic-review';
 import { scoreObjectiveAttempt } from '../../../scoring/score-objective-attempt';
+import { readingModuleFromTest } from '../../../test-schema/module-access';
 import type { MediaAsset, StudentQuestion } from '../../../test-schema/types';
 import { buildStructuredReadingDraft } from './reading-structure-parser';
 import type {
@@ -267,15 +268,16 @@ describe('Reading import acceptance', () => {
     expect(publication.ok).toBe(true);
     if (!publication.ok) return;
 
+    const publishedReading = readingModuleFromTest(publication.value.studentPackage);
     const studentQuestions = allStudentQuestions(
-      publication.value.studentPackage.modules[0].sections.flatMap((section) =>
+      publishedReading.sections.flatMap((section) =>
         section.questionGroups.map((group) => group.questions),
       ),
     );
 
     expect(publication.value.studentPackage.modules).toHaveLength(1);
-    expect(publication.value.studentPackage.modules[0].kind).toBe('READING');
-    expect(publication.value.studentPackage.modules[0].sections).toHaveLength(3);
+    expect(publishedReading.kind).toBe('READING');
+    expect(publishedReading.sections).toHaveLength(3);
     expect(studentQuestions).toHaveLength(40);
     expect(Object.keys(publication.value.protectedAnswers)).toHaveLength(40);
 
