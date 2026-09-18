@@ -53,12 +53,46 @@ export function buildReadingImportModel(input: {
     questions,
     regions: input.visualRegions,
   });
-  structuredDraft.reviewItems.push(...visualLinking.reviewItems);
+  const visualAnchors = visualLinking.anchors.map((anchor) => {
+    const confirmed = input.bundle.visualAnchorConfirmations?.[`q-${anchor.questionNumber}`];
+    return confirmed
+      ? {
+          ...anchor,
+          anchor: confirmed,
+          verificationState: 'CONFIRMED' as const,
+        }
+      : anchor;
+  });
+  structuredDraft.reviewItems.push(
+    ...visualLinking.reviewItems.filter(
+      (item) =>
+        !item.questionNumber ||
+        !input.bundle.visualAnchorConfirmations?.[`q-${item.questionNumber}`],
+    ),
+  );
 
   const answerCoverage = mapAnswersToQuestions({
     questions,
     answerEntries: answerEntriesFromAssignedFields(answerFields, questions),
   });
+
+  for (const [reviewId, confirmedValue] of Object.entries(
+    input.bundle.semanticConfirmations ?? {},
+  )) {
+    if (!reviewId.startsWith('answer-')) continue;
+    const questionId = reviewId.slice('answer-'.length);
+    const definition = answerCoverage.definitions[questionId];
+    const values = confirmedValue
+      .split('|')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (!definition || values.length === 0) continue;
+
+    definition.canonical = [values[0]!];
+    definition.alternatives = values.slice(1).map((value) => [value]);
+    definition.verificationState = 'CONFIRMED';
+  }
+
   const semanticReviewItems = buildSemanticReviewQueue({
     structuredDraft,
     answers: answerCoverage,
@@ -77,7 +111,7 @@ export function buildReadingImportModel(input: {
     structuredDraft,
     answerCoverage,
     semanticReviewItems,
-    visualAnchors: visualLinking.anchors,
+    visualAnchors,
     sourceBlockingFieldIds,
     canPublish:
       questions.length > 0 &&
