@@ -128,6 +128,7 @@ describe('ImportWorkspace', () => {
     });
     const reviewCard = reviewButton.closest('article');
     expect(reviewCard).not.toBeNull();
+    expect(reviewButton.closest('.import-field-card-heading')).not.toBeNull();
 
     await user.click(reviewButton);
 
