@@ -28,6 +28,8 @@ export interface ImportFieldRecord {
   critical: boolean;
   verification: VerificationResult;
   confirmedValue?: string;
+  /** Present only when this field was re-extracted from an explicit source crop. */
+  sourceRegion?: NormalizedRect;
 }
 
 export interface ImportVisualAssetRecord {
