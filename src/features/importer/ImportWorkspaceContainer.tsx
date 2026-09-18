@@ -104,6 +104,7 @@ export function ImportWorkspaceContainer({
       module,
       title,
       sourceDocuments: [],
+      extractedFields: [],
       assignments: [],
       structuredDraft: null,
       status: 'COLLECTING_SOURCES',
@@ -130,6 +131,10 @@ export function ImportWorkspaceContainer({
       const next: ImportBundle = {
         ...loadState.bundle,
         sourceDocuments: [...loadState.bundle.sourceDocuments, ...sources],
+        extractedFields: [
+          ...loadState.bundle.extractedFields,
+          ...extracted.fields,
+        ],
         updatedAtMs: now(),
       };
       setAndPersist(next);
