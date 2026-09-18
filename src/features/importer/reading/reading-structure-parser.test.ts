@@ -248,7 +248,7 @@ describe('buildStructuredReadingDraft', () => {
         {
           pageNumber: 1,
           text: ['Passage 1', 'Visual passage', 'Passage text'].join('\n'),
-          evidence: [evidence(1)],
+          evidence: [{ documentId: 'reading-pdf', pageNumber: 1, method: 'PDF_TEXT' as const }],
         },
         {
           pageNumber: 3,
@@ -257,7 +257,7 @@ describe('buildStructuredReadingDraft', () => {
             'Label the diagram below with the names of the layers of the sun.',
             'Choose NO MORE THAN TWO WORDS from the reading passage for each answer.',
           ].join('\n'),
-          evidence: [evidence(3)],
+          evidence: [{ documentId: 'reading-pdf', pageNumber: 3, method: 'PDF_TEXT' as const }],
         },
       ],
       visualRegions: [
