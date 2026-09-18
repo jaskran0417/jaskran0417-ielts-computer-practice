@@ -1,0 +1,51 @@
+{
+  "passages": 3,
+  "questions": 40,
+  "groups": [
+    [
+      1,
+      4,
+      "DIAGRAM_LABEL_COMPLETION"
+    ],
+    [
+      5,
+      9,
+      "MATCHING_SENTENCE_ENDINGS"
+    ],
+    [
+      10,
+      14,
+      "TRUE_FALSE_NOT_GIVEN"
+    ],
+    [
+      15,
+      19,
+      "SHORT_ANSWER"
+    ],
+    [
+      20,
+      24,
+      "MATCHING_HEADINGS"
+    ],
+    [
+      25,
+      27,
+      "SINGLE_CHOICE"
+    ],
+    [
+      28,
+      31,
+      "TABLE_COMPLETION"
+    ],
+    [
+      32,
+      36,
+      "MATCHING_INFORMATION"
+    ],
+    [
+      37,
+      40,
+      "MATCHING_FEATURES"
+    ]
+  ]
+}
