@@ -115,6 +115,7 @@ export interface MatchingQuestion extends QuestionBase {
 export interface TextCompletionQuestion extends QuestionBase {
   type:
     | 'SHORT_ANSWER'
+    | 'FORM_COMPLETION'
     | 'SENTENCE_COMPLETION'
     | 'SUMMARY_COMPLETION'
     | 'NOTE_COMPLETION'
