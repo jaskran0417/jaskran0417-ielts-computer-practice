@@ -469,3 +469,32 @@
     padding-right: var(--space-4);
   }
 }
+
+
+.import-scoring-mode {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 5px;
+  margin: var(--space-4) 0;
+  color: var(--color-text-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.import-scoring-mode select {
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 550;
+}
+
+.import-scoring-mode small {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+}

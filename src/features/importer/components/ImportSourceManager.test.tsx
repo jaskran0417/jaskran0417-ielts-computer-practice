@@ -81,6 +81,28 @@ describe('ImportSourceManager', () => {
     expect(onCreate).toHaveBeenCalledWith('READING', 'Untitled Reading Test');
   });
 
+  it('lets the administrator choose a non-auto Reading scoring mode', async () => {
+    const user = userEvent.setup();
+    const onScoringModeChange = vi.fn();
+
+    render(
+      <ImportSourceManager
+        bundle={readingBundle()}
+        onCreate={vi.fn()}
+        onAddFiles={vi.fn()}
+        onAssign={vi.fn()}
+        onScoringModeChange={onScoringModeChange}
+      />,
+    );
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Reading scoring mode' }),
+      'MANUAL',
+    );
+
+    expect(onScoringModeChange).toHaveBeenCalledWith('MANUAL');
+  });
+
   it('accepts multiple source files for one import bundle', async () => {
     const user = userEvent.setup();
     const onAddFiles = vi.fn();

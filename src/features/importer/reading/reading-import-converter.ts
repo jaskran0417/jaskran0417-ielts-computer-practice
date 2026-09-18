@@ -124,6 +124,7 @@ export function buildReadingImportModel(input: {
   const questionAssignments = input.bundle.assignments.filter(
     (assignment) => assignment.role === 'QUESTION_MATERIAL',
   );
+  const scoringMode = input.bundle.scoringMode ?? 'AUTO';
   const answerAssignments = input.bundle.assignments.filter(
     (assignment) => assignment.role === 'ANSWER_KEY',
   );
@@ -190,7 +191,11 @@ export function buildReadingImportModel(input: {
   const semanticReviewItems = buildSemanticReviewQueue({
     structuredDraft,
     answers: answerCoverage,
-  });
+  }).map((item) =>
+    scoringMode !== 'AUTO' && item.kind === 'ANSWER_DEFINITION'
+      ? { ...item, critical: false }
+      : item,
+  );
   for (const anchor of visualAnchors) {
     if (anchor.verificationState !== 'CONFIRMED' || !anchor.anchor) continue;
     const question = questions.find((candidate) => candidate.number === anchor.questionNumber);
@@ -205,7 +210,9 @@ export function buildReadingImportModel(input: {
       questionNumber: anchor.questionNumber,
     });
   }
-  const sourceBlockingFieldIds = [...questionFields, ...answerFields]
+  const requiredSourceFields =
+    scoringMode === 'AUTO' ? [...questionFields, ...answerFields] : questionFields;
+  const sourceBlockingFieldIds = requiredSourceFields
     .filter((field) => !resolved(field))
     .map((field) => field.id);
   const semanticBlocked = semanticReviewItems.some(
@@ -224,7 +231,8 @@ export function buildReadingImportModel(input: {
     canPublish:
       questions.length > 0 &&
       sourceBlockingFieldIds.length === 0 &&
-      answerCoverage.blockingReasons.length === 0 &&
+      (scoringMode !== 'AUTO' || answerCoverage.blockingReasons.length === 0) &&
       !semanticBlocked,
+    scoringMode,
   };
 }

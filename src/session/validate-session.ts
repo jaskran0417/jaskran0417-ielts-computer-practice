@@ -5,6 +5,10 @@ const SUPPORTED_MODULES = new Set<SessionModule>(['LISTENING', 'READING', 'WRITI
 export function validateSessionConfig(config: SessionConfig): SessionValidationResult {
   const errors: string[] = [];
 
+  if (!config.testId.trim() || !config.testVersionId.trim()) {
+    errors.push('Choose a published test before creating a session.');
+  }
+
   if (config.modules.length === 0) {
     errors.push('Select at least one module.');
   }

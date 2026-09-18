@@ -139,7 +139,7 @@ describe('ImportWorkspace', () => {
     await user.click(card.getByRole('button', { name: 'Confirm value' }));
 
     expect(screen.getByText('CONFIRMED')).toBeInTheDocument();
-    expect(screen.getByText('1 critical field still requires review')).toBeInTheDocument();
+    expect(screen.getByText('Question material required')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publish imported test' })).toBeDisabled();
   });
   it('shows semantic Reading review items after question and answer pages are assigned', () => {

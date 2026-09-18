@@ -15,6 +15,16 @@ function makeConfig(overrides: Partial<SessionConfig> = {}): SessionConfig {
 }
 
 describe('validateSessionConfig', () => {
+  it('requires a published test before a session can be created', () => {
+    const result = validateSessionConfig(
+      makeConfig({ testId: '', testVersionId: '' }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      errors: ['Choose a published test before creating a session.'],
+    });
+  });
+
   it('rejects an empty module selection', () => {
     const result = validateSessionConfig(makeConfig({ modules: [] }));
     expect(result).toEqual({ ok: false, errors: ['Select at least one module.'] });

@@ -5,6 +5,7 @@ import type {
   ImportSourceAssignment,
   ImportSourceRole,
 } from '../bundle/domain';
+import type { ObjectiveScoringMode } from '../../../test-schema/types';
 
 export interface ImportSourceManagerProps {
   bundle: ImportBundle | null;
@@ -14,6 +15,7 @@ export interface ImportSourceManagerProps {
   onRemoveSource?(sourceDocumentId: string): void;
   onRemoveAssignment?(index: number): void;
   onClearImport?(): void;
+  onScoringModeChange?(mode: ObjectiveScoringMode): void;
 }
 
 const MODULES: Array<{ module: ImportModule; label: string }> = [
@@ -44,6 +46,7 @@ export function ImportSourceManager({
   onRemoveSource,
   onRemoveAssignment,
   onClearImport,
+  onScoringModeChange,
 }: ImportSourceManagerProps) {
   const [sourceDocumentId, setSourceDocumentId] = useState(
     () => bundle?.sourceDocuments[0]?.id ?? '',
@@ -129,6 +132,28 @@ export function ImportSourceManager({
           </button>
         ) : null}
       </div>
+
+
+      {bundle.module === 'READING' ? (
+        <label className="import-scoring-mode">
+          <span>Scoring</span>
+          <select
+            aria-label="Reading scoring mode"
+            value={bundle.scoringMode ?? 'AUTO'}
+            onChange={(event) =>
+              onScoringModeChange?.(event.target.value as ObjectiveScoringMode)
+            }
+          >
+            <option value="AUTO">Automatic scoring — answer key required</option>
+            <option value="MANUAL">Teacher/manual scoring — answer key optional</option>
+            <option value="UNSCORED">Unscored practice — answer key optional</option>
+          </select>
+          <small>
+            Automatic scoring needs verified answers. Manual and unscored tests can be
+            published without an answer key.
+          </small>
+        </label>
+      ) : null}
 
       <label className="import-file-control">
         <span>Add source files</span>
