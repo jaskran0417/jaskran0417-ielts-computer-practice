@@ -50,8 +50,11 @@ export type WritingResultState =
   | 'COMPLETED_NOT_UPLOADED'
   | 'MARKED';
 
+export type ObjectiveAssessmentState = 'SCORED' | 'PENDING_MANUAL' | 'UNSCORED';
+
 export interface ScoredModuleResult {
   module: 'LISTENING' | 'READING';
+  assessmentState?: ObjectiveAssessmentState;
   rawScore?: number;
   totalQuestions?: number;
   band?: number;
