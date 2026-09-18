@@ -1,4 +1,4 @@
-import type { SourceEvidence } from '../domain';
+import type { NormalizedRect, SourceEvidence, VerificationState } from '../domain';
 
 export interface ReadingSourcePage {
   documentId: string;
@@ -63,7 +63,19 @@ export interface StructuredQuestionGroupDraft {
   range: readonly [number, number];
   pageNumber: number;
   sourceText: string;
+  questionType?: ReadingQuestionType;
+  instructionConstraints?: InstructionConstraints;
   evidence: SourceEvidence[];
+}
+
+export interface ImportedVisualAssetDraft {
+  id: string;
+  documentId: string;
+  pageNumber: number;
+  crop: NormalizedRect;
+  mediaType: 'image/png';
+  bytes: ArrayBuffer;
+  verificationState: VerificationState;
 }
 
 export interface StructuredReadingSectionDraft {
@@ -79,5 +91,6 @@ export interface StructuredReadingDraft {
   module: 'READING';
   title: string;
   sections: StructuredReadingSectionDraft[];
+  visualAssets?: ImportedVisualAssetDraft[];
   reviewItems: StructureReviewItem[];
 }
