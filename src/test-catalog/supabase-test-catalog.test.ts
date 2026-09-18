@@ -48,27 +48,16 @@ describe('SupabaseTestCatalog', () => {
       },
     ];
 
-    const client = {
-      from() {
-        const chain = {
-          select() {
-            return chain;
-          },
-          not() {
-            return chain;
-          },
-          eq() {
-            return chain;
-          },
-          async order() {
-            return { data: rows, error: null };
-          },
-        };
-        return chain;
+    const source = {
+      async listPublishedRows() {
+        return { data: rows, error: null };
+      },
+      async loadPublishedRow() {
+        return { data: null, error: null };
       },
     };
 
-    const catalog = new SupabaseTestCatalog(client);
+    const catalog = new SupabaseTestCatalog(source);
     await expect(catalog.listPublishedTests()).resolves.toEqual([
       {
         testId: 'test-1',
@@ -80,36 +69,25 @@ describe('SupabaseTestCatalog', () => {
   });
 
   it('refuses to load a row that is not actually published', async () => {
-    const client = {
-      from() {
-        const chain = {
-          select() {
-            return chain;
+    const source = {
+      async listPublishedRows() {
+        return { data: [], error: null };
+      },
+      async loadPublishedRow() {
+        return {
+          data: {
+            id: 'version-draft',
+            test_id: 'test-2',
+            published_at: null,
+            content: pkg('test-2', 'version-draft', 'Draft Test'),
+            tests: { status: 'draft' },
           },
-          eq() {
-            return chain;
-          },
-          not() {
-            return chain;
-          },
-          async maybeSingle() {
-            return {
-              data: {
-                id: 'version-draft',
-                test_id: 'test-2',
-                published_at: null,
-                content: pkg('test-2', 'version-draft', 'Draft Test'),
-                tests: { status: 'draft' },
-              },
-              error: null,
-            };
-          },
+          error: null,
         };
-        return chain;
       },
     };
 
-    const catalog = new SupabaseTestCatalog(client);
+    const catalog = new SupabaseTestCatalog(source);
     await expect(
       catalog.loadPublishedTest('test-2', 'version-draft'),
     ).rejects.toThrow('Published test version not found');
