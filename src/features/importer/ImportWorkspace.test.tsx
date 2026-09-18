@@ -614,4 +614,92 @@ describe('ImportWorkspace', () => {
     expect(JSON.stringify(publication.studentPackage)).not.toContain('canonical');
   });
 
+
+  it('lets a semantic question-text blocker be reviewed and confirmed from its header card', async () => {
+    const user = userEvent.setup();
+    const changes: ImportBundle[] = [];
+    const source = {
+      id: 'semantic-source',
+      name: 'semantic.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'semantic-bundle',
+      module: 'READING',
+      title: 'Semantic Recovery',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verifiedField = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: {
+            documentId: source.id,
+            pageNumber,
+            method: 'PDF_TEXT' as const,
+          },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'semantic-draft',
+      testId: 'semantic-test',
+      sourceDocuments: [source],
+      fields: [
+        verifiedField('semantic-1', 1, ['Passage 1', 'Recovery Passage', 'Passage text.'].join('\n')),
+        verifiedField('semantic-2', 2, [
+          'Questions 1-2',
+          'Answer the questions using NO MORE THAN TWO WORDS.',
+          '1. First question?',
+        ].join('\n')),
+        verifiedField('semantic-3', 3, ['Answers', '1. alpha', '2. beta'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+        onBundleChange={(next) => changes.push(next)}
+      />,
+    );
+
+    const review = screen.getByRole('button', {
+      name: 'Review & Confirm Question 2 text',
+    });
+    expect(review.closest('.import-field-card-heading')).not.toBeNull();
+
+    await user.click(review);
+    const card = review.closest('article');
+    expect(card).not.toBeNull();
+    const editor = within(card as HTMLElement);
+    await user.type(
+      editor.getByRole('textbox', { name: 'Confirmed semantic value' }),
+      'Second recovered question?',
+    );
+    await user.click(editor.getByRole('button', { name: 'Confirm semantic value' }));
+
+    expect(changes.at(-1)?.semanticConfirmations).toMatchObject({
+      'review-question-text-2': 'Second recovered question?',
+    });
+  });
+
 });
