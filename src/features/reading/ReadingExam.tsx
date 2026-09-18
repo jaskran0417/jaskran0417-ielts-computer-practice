@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
-import type { ExamAttemptState } from '../../exam-engine/types';
+import type {
+  ExamAttemptState,
+  PassageTextRange,
+} from '../../exam-engine/types';
 import type { StudentTestPackage } from '../../test-schema/types';
 import { QuestionRenderer } from '../../question-types/QuestionRenderer';
 import { useExam } from '../exam/ExamProvider';
+import { PassageTools } from './PassageTools';
+import { segmentsForParagraph } from './passage-annotations';
+import { passageRangeFromSelection } from './passage-selection';
 import { QuestionNavigator } from './QuestionNavigator';
 
 interface ReadingExamProps {
@@ -21,7 +27,10 @@ function formatTime(totalSeconds: number): string {
 export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps) {
   const { state, dispatch } = useExam();
   const [nowMs, setNowMs] = useState(() => now());
+  const [pendingSelection, setPendingSelection] = useState<PassageTextRange | null>(null);
   const submittingRef = useRef(false);
+  const passageCopyRef = useRef<HTMLDivElement | null>(null);
+  const annotationSequenceRef = useRef(0);
   const readingModule = test.modules[0];
   const assetUrlById = Object.fromEntries(
     (test.assets ?? []).map((asset) => [asset.id, asset.url]),
@@ -57,8 +66,84 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
     return () => window.clearInterval(timerId);
   }, [now, state.startedAtMs, state.status]);
 
+  useEffect(() => {
+    setPendingSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }, [activeSection.passage.id]);
+
   const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
   const timeLeft = remainingSeconds(state, nowMs);
+  const passageHighlights = state.highlights.filter(
+    (highlight) => highlight.passageId === activeSection.passage.id,
+  );
+  const passageNotes = state.notes.filter(
+    (note) => note.passageId === activeSection.passage.id,
+  );
+
+  function nextAnnotationId(kind: 'highlight' | 'note'): string {
+    annotationSequenceRef.current += 1;
+    return [
+      kind,
+      state.id,
+      now(),
+      annotationSequenceRef.current,
+    ].join('-');
+  }
+
+  function capturePassageSelection() {
+    if (state.status !== 'ACTIVE' || !passageCopyRef.current) {
+      setPendingSelection(null);
+      return;
+    }
+
+    setPendingSelection(
+      passageRangeFromSelection(
+        window.getSelection(),
+        activeSection.passage.id,
+        passageCopyRef.current,
+      ),
+    );
+  }
+
+  function clearPassageSelection() {
+    setPendingSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }
+
+  function addHighlight(selection: PassageTextRange) {
+    dispatch({
+      type: 'ADD_HIGHLIGHT',
+      highlight: {
+        ...selection,
+        id: nextAnnotationId('highlight'),
+      },
+    });
+    clearPassageSelection();
+  }
+
+  function saveNote(body: string, selection: PassageTextRange | null) {
+    dispatch({
+      type: 'UPSERT_NOTE',
+      note: {
+        id: nextAnnotationId('note'),
+        passageId: activeSection.passage.id,
+        paragraphIndex: selection?.paragraphIndex,
+        startOffset: selection?.startOffset,
+        endOffset: selection?.endOffset,
+        quote: selection?.text,
+        body,
+        updatedAtMs: now(),
+      },
+    });
+    clearPassageSelection();
+  }
+
+  function removeHighlightIds(highlightIds: string[]) {
+    if (state.status !== 'ACTIVE') return;
+    for (const highlightId of highlightIds) {
+      dispatch({ type: 'REMOVE_HIGHLIGHT', highlightId });
+    }
+  }
 
   async function submitTest(submittedAtMs: number) {
     if (state.status !== 'ACTIVE' || submittingRef.current) return;
@@ -102,11 +187,67 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
           <div className="pane-heading">
             <span>{activeSection.title}</span>
             <h2>{activeSection.passage.title}</h2>
+            <PassageTools
+              passageTitle={activeSection.passage.title}
+              selection={pendingSelection}
+              notes={passageNotes}
+              disabled={state.status !== 'ACTIVE'}
+              onHighlight={addHighlight}
+              onSaveNote={saveNote}
+              onDeleteNote={(noteId) => dispatch({ type: 'DELETE_NOTE', noteId })}
+            />
           </div>
-          <div className="passage-copy">
-            {activeSection.passage.paragraphs.map((paragraph, index) => (
-              <p key={`${activeSection.passage.id}-${index}`}>{paragraph}</p>
-            ))}
+          <div
+            ref={passageCopyRef}
+            className="passage-copy"
+            onMouseUp={capturePassageSelection}
+            onKeyUp={capturePassageSelection}
+          >
+            {activeSection.passage.paragraphs.map((paragraph, paragraphIndex) => {
+              const segments = segmentsForParagraph(
+                paragraph,
+                passageHighlights.filter(
+                  (highlight) => highlight.paragraphIndex === paragraphIndex,
+                ),
+              );
+
+              return (
+                <p
+                  key={`${activeSection.passage.id}-${paragraphIndex}`}
+                  data-paragraph-index={paragraphIndex}
+                >
+                  {segments.map((segment, segmentIndex) =>
+                    segment.highlighted ? (
+                      <span
+                        key={`${segmentIndex}-${segment.highlightIds.join('-')}`}
+                        className="passage-highlight"
+                        role={state.status === 'ACTIVE' ? 'button' : undefined}
+                        tabIndex={state.status === 'ACTIVE' ? 0 : undefined}
+                        title={
+                          state.status === 'ACTIVE'
+                            ? 'Activate to remove this highlight'
+                            : undefined
+                        }
+                        onClick={() => removeHighlightIds(segment.highlightIds)}
+                        onKeyDown={(event) => {
+                          if (
+                            state.status === 'ACTIVE' &&
+                            (event.key === 'Enter' || event.key === ' ')
+                          ) {
+                            event.preventDefault();
+                            removeHighlightIds(segment.highlightIds);
+                          }
+                        }}
+                      >
+                        {segment.text}
+                      </span>
+                    ) : (
+                      <span key={segmentIndex}>{segment.text}</span>
+                    ),
+                  )}
+                </p>
+              );
+            })}
           </div>
         </article>
 
