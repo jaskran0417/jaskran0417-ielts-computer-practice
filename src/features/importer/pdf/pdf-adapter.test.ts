@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   bundledPdfWorkerUrl,
   extractPdf,
+  renderPdfPageForEvidence,
   type PdfDocumentLoader,
 } from './pdf-adapter';
 
@@ -69,6 +70,55 @@ describe('extractPdf', () => {
       expect(item.rect.height).toBeGreaterThanOrEqual(0);
       expect(item.rect.x + item.rect.width).toBeLessThanOrEqual(1);
       expect(item.rect.y + item.rect.height).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+
+describe('renderPdfPageForEvidence', () => {
+  it('returns PNG evidence bytes and rendered dimensions', async () => {
+    const originalCreateElement = document.createElement.bind(document);
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({}),
+      toBlob(callback: (blob: Blob | null) => void) {
+        callback(new Blob(['png'], { type: 'image/png' }));
+      },
+    } as unknown as HTMLCanvasElement;
+
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation(((tagName: string) =>
+        tagName === 'canvas' ? canvas : originalCreateElement(tagName)) as typeof document.createElement);
+
+    try {
+      const result = await renderPdfPageForEvidence(new ArrayBuffer(8), 1, 2, {
+        async load() {
+          return {
+            numPages: 1,
+            async getPage() {
+              return {
+                getViewport({ scale }: { scale: number }) {
+                  return { width: 100 * scale, height: 50 * scale };
+                },
+                async getTextContent() {
+                  return { items: [] };
+                },
+                render() {
+                  return { promise: Promise.resolve() };
+                },
+              } as never;
+            },
+          };
+        },
+      });
+
+      expect(result.width).toBe(200);
+      expect(result.height).toBe(100);
+      expect(result.image.type).toBe('image/png');
+    } finally {
+      createElementSpy.mockRestore();
     }
   });
 });
