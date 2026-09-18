@@ -121,6 +121,16 @@ export function SessionResult({ summary, audit }: SessionResultProps) {
           }
 
           const scored = result && isScoredResult(result) ? result : undefined;
+          const assessmentState =
+            scored?.assessmentState ??
+            (typeof scored?.rawScore === 'number' ? 'SCORED' : undefined);
+          const assessmentLabel =
+            assessmentState === 'PENDING_MANUAL'
+              ? 'Teacher scoring'
+              : assessmentState === 'UNSCORED'
+                ? 'Unscored practice'
+                : 'Scored module';
+
           return (
             <article className="result-card" key={module}>
               <div className="result-card-header">
@@ -129,12 +139,16 @@ export function SessionResult({ summary, audit }: SessionResultProps) {
                 </span>
                 <div>
                   <h2>{moduleLabel(module)}</h2>
-                  <span>{selected ? 'Scored module' : 'Not selected'}</span>
+                  <span>{selected ? assessmentLabel : 'Not selected'}</span>
                 </div>
               </div>
 
               {!selected ? (
                 <p className="result-primary muted">Not included</p>
+              ) : assessmentState === 'PENDING_MANUAL' ? (
+                <p className="result-primary">Awaiting teacher marking</p>
+              ) : assessmentState === 'UNSCORED' ? (
+                <p className="result-primary">Unscored practice completed</p>
               ) : (
                 <div className="score-stack">
                   {typeof scored?.rawScore === 'number' && typeof scored.totalQuestions === 'number' ? (
