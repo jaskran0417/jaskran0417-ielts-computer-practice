@@ -5,6 +5,7 @@ import {
   ImportWorkspace,
   type ImportFileProcessor,
 } from '../features/importer/ImportWorkspace';
+import { createLocalImportProcessor } from '../features/importer/local-file-processor';
 import { ReadingExam } from '../features/reading/ReadingExam';
 import { SessionBuilder } from '../features/sessions/SessionBuilder';
 import { IndexedDbSessionRepository } from '../session/indexeddb-session-repository';
@@ -28,9 +29,6 @@ const WORKSPACE_NAV: AppShellNavItem[] = [
   { id: 'import', label: 'Import', hint: 'Review source material' },
 ];
 
-const unavailableImportProcessor: ImportFileProcessor = async () => {
-  throw new Error('Automatic local extraction is not connected in this preview yet.');
-};
 
 function labelModule(module: SessionModule): string {
   return module[0] + module.slice(1).toLowerCase();
@@ -43,6 +41,7 @@ export default function App({
   nowMs,
 }: AppProps) {
   const defaultSessionRepository = useMemo(() => new IndexedDbSessionRepository(), []);
+  const defaultImportProcessor = useMemo(() => createLocalImportProcessor(), []);
   const sessions = sessionRepository ?? defaultSessionRepository;
   const [session, setSession] = useState<SessionConfig | null>(null);
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('sessions');
@@ -69,7 +68,7 @@ export default function App({
         onNavigate={navigateWorkspace}
       >
         {activeSection === 'import' ? (
-          <ImportWorkspace processFile={importProcessor ?? unavailableImportProcessor} />
+          <ImportWorkspace processFile={importProcessor ?? defaultImportProcessor} />
         ) : (
           <SessionBuilder
             testId={sampleReadingTest.id}
