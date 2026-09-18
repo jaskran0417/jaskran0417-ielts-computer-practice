@@ -8,6 +8,7 @@ import type {
 } from '../reading/types';
 import type {
   MediaAsset,
+  ObjectiveScoringMode,
   StudentQuestion,
   StudentTestPackage,
 } from '../../../test-schema/types';
@@ -199,7 +200,9 @@ export function prepareReadingPublication(input: {
   reviewItems: SemanticReviewItem[];
   visualAnchors: VisualAnchorDraft[];
   visualAssets: Record<string, MediaAsset>;
+  scoringMode?: ObjectiveScoringMode;
 }): ReadingPublicationResult {
+  const scoringMode = input.scoringMode ?? 'AUTO';
   const unresolved = unresolvedSemanticItems(input.reviewItems);
   if (unresolved.length > 0) {
     return {
@@ -209,7 +212,7 @@ export function prepareReadingPublication(input: {
     };
   }
 
-  if (input.answerCoverage.blockingReasons.length > 0) {
+  if (scoringMode === 'AUTO' && input.answerCoverage.blockingReasons.length > 0) {
     return {
       ok: false,
       reasons: [...input.answerCoverage.blockingReasons],
@@ -274,6 +277,7 @@ export function prepareReadingPublication(input: {
         id: `reading-${input.versionId}`,
         kind: 'READING',
         title: 'Reading',
+        scoringMode,
         sections,
       },
     ],
@@ -284,7 +288,8 @@ export function prepareReadingPublication(input: {
     ok: true,
     value: {
       studentPackage,
-      protectedAnswers: { ...input.answerCoverage.definitions },
+      protectedAnswers:
+        scoringMode === 'AUTO' ? { ...input.answerCoverage.definitions } : {},
     },
   };
 }
