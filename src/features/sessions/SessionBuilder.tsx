@@ -6,11 +6,15 @@ import type {
   WritingDelivery,
 } from '../../session/types';
 import { validateSessionConfig } from '../../session/validate-session';
+import type { TestSummary } from '../../test-catalog/test-catalog-repository';
 
 interface SessionBuilderProps {
-  testId: string;
-  testVersionId: string;
+  testId?: string;
+  testVersionId?: string;
+  tests?: TestSummary[];
+  selectedTestVersionId?: string;
   nowMs?: number;
+  onTestSelected?(summary: TestSummary): void;
   onCreate(config: SessionConfig): void;
 }
 
@@ -43,25 +47,46 @@ const MODULE_OPTIONS: Array<{
 export function SessionBuilder({
   testId,
   testVersionId,
+  tests,
+  selectedTestVersionId,
   nowMs,
+  onTestSelected,
   onCreate,
 }: SessionBuilderProps) {
   const [createdAtMs] = useState(() => nowMs ?? Date.now());
+  const [selectedVersionId, setSelectedVersionId] = useState(
+    () => selectedTestVersionId ?? tests?.[0]?.versionId ?? testVersionId ?? '',
+  );
   const [modules, setModules] = useState<SessionModule[]>([]);
   const [mode, setMode] = useState<SessionMode>('PRACTICE');
   const [writingDelivery, setWritingDelivery] = useState<WritingDelivery | undefined>();
 
+  const selectedTest = useMemo(
+    () => tests?.find((test) => test.versionId === selectedVersionId) ?? null,
+    [selectedVersionId, tests],
+  );
+
+  const resolvedTestId = selectedTest?.testId ?? testId ?? '';
+  const resolvedTestVersionId = selectedTest?.versionId ?? testVersionId ?? '';
+
   const config = useMemo<SessionConfig>(
     () => ({
       id: `session-${createdAtMs}`,
-      testId,
-      testVersionId,
+      testId: resolvedTestId,
+      testVersionId: resolvedTestVersionId,
       modules,
       mode,
       createdAtMs,
       ...(writingDelivery ? { writingDelivery } : {}),
     }),
-    [createdAtMs, mode, modules, testId, testVersionId, writingDelivery],
+    [
+      createdAtMs,
+      mode,
+      modules,
+      resolvedTestId,
+      resolvedTestVersionId,
+      writingDelivery,
+    ],
   );
 
   const validation = useMemo(() => validateSessionConfig(config), [config]);
@@ -101,6 +126,39 @@ export function SessionBuilder({
       <form onSubmit={submit} className="session-form">
         <div className="session-layout">
           <div className="setup-stack">
+            {tests ? (
+              <fieldset className="setup-panel">
+                <legend>Published test</legend>
+                <p className="field-help">
+                  Choose the exact published test version students will take.
+                </p>
+                <label>
+                  <span className="field-help">Published test</span>
+                  <select
+                    aria-label="Published test"
+                    value={selectedVersionId}
+                    disabled={tests.length === 0}
+                    onChange={(event) => {
+                      const versionId = event.target.value;
+                      setSelectedVersionId(versionId);
+                      const next = tests.find((test) => test.versionId === versionId);
+                      if (next) onTestSelected?.(next);
+                    }}
+                  >
+                    {tests.length === 0 ? (
+                      <option value="">No published tests available</option>
+                    ) : (
+                      tests.map((test) => (
+                        <option key={test.versionId} value={test.versionId}>
+                          {test.title}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
+              </fieldset>
+            ) : null}
+
             <fieldset className="setup-panel">
               <legend>Modules</legend>
               <p className="field-help">Select one module or combine several for this session.</p>

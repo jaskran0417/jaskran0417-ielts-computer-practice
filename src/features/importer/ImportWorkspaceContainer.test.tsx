@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { ImportBundle } from './bundle/domain';
 import type {
   ImportDraft,
   ImportRepository,
@@ -55,6 +56,7 @@ const restoredDraft: ImportDraft = {
 
 class FakeImportRepository implements ImportRepository {
   saved: ImportDraft[] = [];
+  bundles: ImportBundle[] = [];
 
   constructor(private readonly drafts: ImportDraft[]) {}
 
@@ -71,9 +73,77 @@ class FakeImportRepository implements ImportRepository {
   async listDrafts() {
     return [...this.drafts];
   }
+
+  async loadBundle(id: string) {
+    return this.bundles.find((bundle) => bundle.id === id) ?? null;
+  }
+
+  async saveBundle(bundle: ImportBundle) {
+    this.bundles = [...this.bundles.filter((item) => item.id !== bundle.id), bundle];
+  }
+
+  async deleteBundle(id: string) {
+    this.bundles = this.bundles.filter((bundle) => bundle.id !== id);
+  }
+
+  async listBundles() {
+    return [...this.bundles];
+  }
 }
 
 describe('ImportWorkspaceContainer', () => {
+  it('creates and persists a manually selected Reading import bundle', async () => {
+    const repository = new FakeImportRepository([]);
+    const user = userEvent.setup();
+
+    render(
+      <ImportWorkspaceContainer
+        repository={repository}
+        processFile={vi.fn()}
+      />,
+    );
+
+    await screen.findByText('No source loaded');
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
+
+    await waitFor(() => expect(repository.bundles).toHaveLength(1));
+    expect(repository.bundles[0]).toMatchObject({
+      module: 'READING',
+      title: 'Untitled Reading Test',
+      sourceDocuments: [],
+      assignments: [],
+      status: 'COLLECTING_SOURCES',
+    });
+    expect(screen.getByText('Untitled Reading Test')).toBeInTheDocument();
+  });
+
+  it('adds processed local files to the current import bundle', async () => {
+    const repository = new FakeImportRepository([]);
+    const user = userEvent.setup();
+    const processFile = vi.fn(async () => restoredDraft);
+
+    render(
+      <ImportWorkspaceContainer
+        repository={repository}
+        processFile={processFile}
+      />,
+    );
+
+    await screen.findByText('No source loaded');
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
+    await user.upload(
+      screen.getByLabelText('Add source files'),
+      new File(['pdf'], 'restored-reading.pdf', { type: 'application/pdf' }),
+    );
+
+    await waitFor(() =>
+      expect(repository.bundles[repository.bundles.length - 1]?.sourceDocuments[0]?.name).toBe(
+        'restored-reading.pdf',
+      ),
+    );
+    expect(await screen.findByText('restored-reading.pdf', { selector: '.import-summary-bar strong' })).toBeInTheDocument();
+  });
+
   it('restores the newest local draft and saves explicit review changes', async () => {
     const repository = new FakeImportRepository([restoredDraft]);
     const processFile = vi.fn();
@@ -86,7 +156,7 @@ describe('ImportWorkspaceContainer', () => {
     );
 
     expect(screen.getByText('Loading local import draft…')).toBeInTheDocument();
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+    expect(await screen.findByText('restored-reading.pdf', { selector: '.import-summary-bar strong' })).toBeInTheDocument();
 
     const confirmedValue = screen.getByRole('textbox', { name: 'Confirmed value' });
     const user = userEvent.setup();
@@ -119,12 +189,13 @@ describe('ImportWorkspaceContainer', () => {
 
     await screen.findByText('No source loaded');
     const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
     await user.upload(
-      screen.getByLabelText('Choose source file'),
+      screen.getByLabelText('Add source files'),
       new File(['pdf'], 'restored-reading.pdf', { type: 'application/pdf' }),
     );
 
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'restored-reading.pdf' })).toBeInTheDocument();
     expect(
       await screen.findByRole('alert', { name: 'Import storage error' }),
     ).toHaveTextContent('IndexedDB unavailable');

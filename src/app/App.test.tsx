@@ -2,8 +2,77 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { ExamAttemptState } from '../exam-engine/types';
+import type { ProtectedAnswerRepository, ProtectedAnswerSet } from '../scoring/indexeddb-protected-answer-repository';
 import type { AttemptRepository } from '../storage/attempt-repository';
+import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
+import type { StudentTestPackage } from '../test-schema/types';
 import App from './App';
+
+const importedReadingTest: StudentTestPackage = {
+  id: 'test-imported',
+  versionId: 'version-imported-1',
+  title: 'Imported Reading Test',
+  durationSeconds: 3600,
+  modules: [
+    {
+      id: 'reading-imported',
+      kind: 'READING',
+      title: 'Reading',
+      sections: [
+        {
+          id: 'section-imported',
+          title: 'Passage 1',
+          passage: {
+            id: 'passage-imported',
+            title: 'The Layers of the Sun',
+            paragraphs: ['Imported passage text'],
+          },
+          questionGroups: [
+            {
+              id: 'group-imported',
+              instruction: 'Choose the correct answer.',
+              questions: [
+                {
+                  id: 'q-imported-1',
+                  number: 1,
+                  type: 'SINGLE_CHOICE',
+                  prompt: 'Imported question?',
+                  options: [
+                    { id: 'A', label: 'A' },
+                    { id: 'B', label: 'B' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+class FakeTestCatalog implements TestCatalogRepository {
+  constructor(private readonly tests: StudentTestPackage[]) {}
+
+  async listPublishedTests(): Promise<TestSummary[]> {
+    return this.tests.map((test) => ({
+      testId: test.id,
+      versionId: test.versionId,
+      title: test.title,
+      modules: ['READING'],
+    }));
+  }
+
+  async loadPublishedTest(testId: string, versionId: string) {
+    const test = this.tests.find(
+      (candidate) => candidate.id === testId && candidate.versionId === versionId,
+    );
+    if (!test) throw new Error('Published test version not found');
+    return test;
+  }
+
+  async saveLocalTest() {}
+}
 
 class EmptyAttemptRepository implements AttemptRepository {
   async loadAttempt() {
@@ -44,20 +113,54 @@ describe('App session flow', () => {
     render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
 
     await user.click(screen.getByRole('button', { name: /Import/i }));
+    await user.click(await screen.findByRole('button', { name: 'Reading' }));
     await user.upload(
-      await screen.findByLabelText('Choose source file'),
+      screen.getByLabelText('Add source files'),
       new File(['1 library\n2 B\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
     );
 
-    expect(await screen.findByText('answers.txt')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'answers.txt' })).toBeInTheDocument();
     expect(screen.getAllByText('VERIFIED')).toHaveLength(3);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('launches the selected imported Reading package instead of the sample fixture', async () => {
+    const user = userEvent.setup();
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        nowMs={1_000}
+      />,
+    );
+
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
+    await user.click(screen.getByRole('button', { name: 'Create session' }));
+
+    expect(await screen.findByText('The Layers of the Sun')).toBeInTheDocument();
+    expect(screen.queryByText('Urban green spaces')).not.toBeInTheDocument();
+  });
+
   it('launches Reading-only into the focused existing exam player', async () => {
     const user = userEvent.setup();
-    render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        nowMs={1_000}
+      />,
+    );
 
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('button', { name: 'Create session' }));
 
@@ -68,8 +171,19 @@ describe('App session flow', () => {
 
   it('does not fake an exam when a selected module player is not attached yet', async () => {
     const user = userEvent.setup();
-    render(<App repository={new EmptyAttemptRepository()} nowMs={2_000} />);
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        nowMs={2_000}
+      />,
+    );
 
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
     await user.click(screen.getByRole('checkbox', { name: 'Listening' }));
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('radio', { name: 'Mock test' }));
@@ -80,4 +194,52 @@ describe('App session flow', () => {
     expect(screen.queryByRole('heading', { name: 'Reading' })).not.toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
   });
+
+  it('scores a submitted local Reading test from protected local answers and shows the result', async () => {
+    const user = userEvent.setup();
+    const protectedAnswers: ProtectedAnswerSet = {
+      'q-imported-1': {
+        questionNumber: 1,
+        canonical: ['A'],
+        alternatives: [],
+        normalization: {
+          caseSensitive: false,
+          collapseWhitespace: true,
+          punctuation: 'STRICT',
+        },
+        sourceEvidence: [],
+        verificationState: 'VERIFIED',
+      },
+    };
+    const answerRepository: ProtectedAnswerRepository = {
+      async save() {},
+      async load(versionId) {
+        return versionId === 'version-imported-1' ? protectedAnswers : null;
+      },
+    };
+
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        protectedAnswerRepository={answerRepository}
+      />,
+    );
+
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
+    await user.click(screen.getByRole('button', { name: 'Create session' }));
+
+    const choices = await screen.findAllByRole('radio');
+    await user.click(choices[0]!);
+    await user.click(screen.getByRole('button', { name: 'Submit test' }));
+
+    expect(await screen.findByRole('heading', { name: 'Session result' })).toBeInTheDocument();
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+  });
+
 });

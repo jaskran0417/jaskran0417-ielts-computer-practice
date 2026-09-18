@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
-import type { StudentQuestion, StudentTestPackage } from '../../test-schema/types';
-import { GapFillQuestion } from '../../question-types/GapFillQuestion';
-import { SingleChoiceQuestion } from '../../question-types/SingleChoiceQuestion';
+import type { ExamAttemptState } from '../../exam-engine/types';
+import type { StudentTestPackage } from '../../test-schema/types';
+import { QuestionRenderer } from '../../question-types/QuestionRenderer';
 import { useExam } from '../exam/ExamProvider';
 import { QuestionNavigator } from './QuestionNavigator';
 
 interface ReadingExamProps {
   test: StudentTestPackage;
+  onSubmit?(attempt: ExamAttemptState): void | Promise<void>;
+  now?: () => number;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -16,34 +18,14 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function renderQuestion(
-  question: StudentQuestion,
-  value: string | string[] | undefined,
-  onChange: (value: string) => void,
-) {
-  if (question.type === 'SINGLE_CHOICE') {
-    return (
-      <SingleChoiceQuestion
-        question={question}
-        value={typeof value === 'string' ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
-
-  return (
-    <GapFillQuestion
-      question={question}
-      value={typeof value === 'string' ? value : undefined}
-      onChange={onChange}
-    />
-  );
-}
-
-export function ReadingExam({ test }: ReadingExamProps) {
+export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps) {
   const { state, dispatch } = useExam();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(() => now());
+  const submittingRef = useRef(false);
   const readingModule = test.modules[0];
+  const assetUrlById = Object.fromEntries(
+    (test.assets ?? []).map((asset) => [asset.id, asset.url]),
+  );
   const allQuestions = readingModule.sections.flatMap((section) =>
     section.questionGroups.flatMap((group) => group.questions),
   );
@@ -65,24 +47,42 @@ export function ReadingExam({ test }: ReadingExamProps) {
   }
 
   useEffect(() => {
-    setNowMs(Date.now());
+    setNowMs(now());
     if (state.status !== 'ACTIVE') return;
 
     const timerId = window.setInterval(() => {
-      setNowMs(Date.now());
+      setNowMs(now());
     }, 1_000);
 
     return () => window.clearInterval(timerId);
-  }, [state.startedAtMs, state.status]);
+  }, [now, state.startedAtMs, state.status]);
 
   const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
   const timeLeft = remainingSeconds(state, nowMs);
 
+  async function submitTest(submittedAtMs: number) {
+    if (state.status !== 'ACTIVE' || submittingRef.current) return;
+
+    submittingRef.current = true;
+    const submittedAttempt: ExamAttemptState = {
+      ...state,
+      status: 'SUBMITTED',
+      submittedAtMs,
+    };
+    dispatch({ type: 'SUBMIT', submittedAtMs });
+
+    try {
+      await onSubmit?.(submittedAttempt);
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
   useEffect(() => {
     if (state.status === 'ACTIVE' && timeLeft === 0) {
-      dispatch({ type: 'SUBMIT', submittedAtMs: nowMs });
+      void submitTest(nowMs);
     }
-  }, [dispatch, nowMs, state.status, timeLeft]);
+  }, [nowMs, state.status, timeLeft]);
 
   return (
     <main className="exam-shell">
@@ -126,9 +126,15 @@ export function ReadingExam({ test }: ReadingExamProps) {
               </button>
             </div>
             <p className="question-prompt">{activeQuestion.prompt}</p>
-            {renderQuestion(activeQuestion, state.answers[activeQuestion.id], (value) =>
-              dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value })
-            )}
+            <QuestionRenderer
+              question={activeQuestion}
+              value={state.answers[activeQuestion.id]}
+              disabled={state.status !== 'ACTIVE'}
+              assetUrlById={assetUrlById}
+              onChange={(value) =>
+                dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value })
+              }
+            />
           </div>
         </section>
       </section>
@@ -138,6 +144,14 @@ export function ReadingExam({ test }: ReadingExamProps) {
         <div className="footer-status">
           <span className="status-key"><i className="answered-key" /> Answered</span>
           <span className="status-key"><i className="review-key" /> Review</span>
+          <button
+            type="button"
+            className="primary-action"
+            disabled={state.status !== 'ACTIVE'}
+            onClick={() => void submitTest(now())}
+          >
+            Submit test
+          </button>
         </div>
       </footer>
     </main>

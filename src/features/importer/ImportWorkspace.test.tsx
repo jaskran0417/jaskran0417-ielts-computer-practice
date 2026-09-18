@@ -1,6 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { ImportBundle } from './bundle/domain';
 import type { ImportDraft } from './local/import-repository';
 import { ImportWorkspace } from './ImportWorkspace';
 
@@ -94,15 +95,16 @@ describe('ImportWorkspace', () => {
     const user = userEvent.setup();
     render(<ImportWorkspace processFile={async () => importedDraft} />);
 
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
     const file = new File(['pdf'], 'practice-test.pdf', { type: 'application/pdf' });
-    await user.upload(screen.getByLabelText('Choose source file'), file);
+    await user.upload(screen.getByLabelText('Add source files'), file);
 
-    expect(await screen.findByText('practice-test.pdf')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'practice-test.pdf' })).toBeInTheDocument();
     expect(screen.getByText('VERIFIED')).toBeInTheDocument();
     expect(screen.getByText('REVIEW_REQUIRED')).toBeInTheDocument();
     expect(screen.getByText('UNREADABLE')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Review QUESTION_TEXT' }));
+    await user.click(screen.getByRole('button', { name: 'Review & Confirm QUESTION_TEXT' }));
 
     const evidence = screen.getByRole('region', { name: 'Source evidence' });
     expect(within(evidence).getByText('Page 2')).toBeInTheDocument();
@@ -116,21 +118,499 @@ describe('ImportWorkspace', () => {
     const user = userEvent.setup();
     render(<ImportWorkspace processFile={async () => importedDraft} />);
 
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
     await user.upload(
-      screen.getByLabelText('Choose source file'),
+      screen.getByLabelText('Add source files'),
       new File(['pdf'], 'practice-test.pdf', { type: 'application/pdf' }),
     );
-    await user.click(await screen.findByRole('button', { name: 'Review QUESTION_TEXT' }));
+    const reviewButton = await screen.findByRole('button', {
+      name: 'Review & Confirm QUESTION_TEXT',
+    });
+    const reviewCard = reviewButton.closest('article');
+    expect(reviewCard).not.toBeNull();
 
-    await user.clear(screen.getByRole('textbox', { name: 'Confirmed value' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Confirmed value' }),
-      'The library closes at 6 pm.',
-    );
-    await user.click(screen.getByRole('button', { name: 'Confirm value' }));
+    await user.click(reviewButton);
+
+    const card = within(reviewCard as HTMLElement);
+    const confirmedValue = card.getByRole('textbox', { name: 'Confirmed value' });
+    await user.clear(confirmedValue);
+    await user.type(confirmedValue, 'The library closes at 6 pm.');
+    await user.click(card.getByRole('button', { name: 'Confirm value' }));
 
     expect(screen.getByText('CONFIRMED')).toBeInTheDocument();
     expect(screen.getByText('1 critical field still requires review')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publish imported test' })).toBeDisabled();
   });
+  it('shows semantic Reading review items after question and answer pages are assigned', () => {
+    const source = {
+      id: 'reading-source',
+      name: 'reading-test.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 1024,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'bundle-reading',
+      module: 'READING',
+      title: 'Imported Reading',
+      sourceDocuments: [source],
+      assignments: [
+        {
+          sourceDocumentId: source.id,
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 2 }],
+        },
+        {
+          sourceDocumentId: source.id,
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 3, endPage: 3 }],
+        },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 10,
+    };
+    const draft: ImportDraft = {
+      id: 'draft-reading',
+      testId: 'test-reading',
+      sourceDocuments: [source],
+      fields: [
+        {
+          id: 'page-1',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: ['Passage 1', 'A Test Passage', 'The outer layer is the corona.'].join('\n'),
+            reasons: [],
+            passA: {
+              value: ['Passage 1', 'A Test Passage', 'The outer layer is the corona.'].join('\n'),
+              confidence: null,
+              evidence: {
+                documentId: source.id,
+                pageNumber: 1,
+                method: 'PDF_TEXT',
+              },
+            },
+          },
+        },
+        {
+          id: 'page-2',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue:
+              ['Questions 1-1', 'Answer the questions using NO MORE THAN TWO WORDS.', '1. What is the outer layer called?'].join('\n'),
+            reasons: [],
+            passA: {
+              value:
+                ['Questions 1-1', 'Answer the questions using NO MORE THAN TWO WORDS.', '1. What is the outer layer called?'].join('\n'),
+              confidence: null,
+              evidence: {
+                documentId: source.id,
+                pageNumber: 2,
+                method: 'PDF_TEXT',
+              },
+            },
+          },
+        },
+        {
+          id: 'page-3',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: '1 corona',
+            reasons: [],
+            passA: {
+              value: '1 corona',
+              confidence: null,
+              evidence: {
+                documentId: source.id,
+                pageNumber: 3,
+                method: 'PDF_TEXT',
+              },
+            },
+          },
+        },
+      ],
+      updatedAtMs: 10,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Structured Reading review' })).toBeInTheDocument();
+    expect(screen.getByText('Passage 1 title')).toBeInTheDocument();
+    expect(screen.getByText('Questions 1–1 instruction')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 text')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 accepted answer')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Fields to review' })).not.toBeInTheDocument();
+  });
+
+
+  it('passes retained PDF visuals into the live Reading conversion model', () => {
+    const source = {
+      id: 'visual-reading-source',
+      name: 'visual-reading.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 2048,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'visual-bundle',
+      module: 'READING',
+      title: 'Visual Reading Test',
+      sourceDocuments: [source],
+      assignments: [
+        {
+          sourceDocumentId: source.id,
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 3 }],
+        },
+        {
+          sourceDocumentId: source.id,
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 4, endPage: 4 }],
+        },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 10,
+    };
+    const draft: ImportDraft = {
+      id: 'visual-draft',
+      testId: 'visual-test',
+      sourceDocuments: [source],
+      visualAssets: [
+        {
+          id: 'diagram-page-3',
+          sourceDocumentId: source.id,
+          pageNumber: 3,
+          kind: 'DIAGRAM',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,cGFnZQ==',
+          crop: { x: 0, y: 0, width: 1, height: 1 },
+        },
+      ],
+      fields: [
+        {
+          id: 'visual-page-1',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: ['Passage 1', 'Visual Passage', 'The corona is the outer layer.'].join('\n'),
+            reasons: [],
+            passA: {
+              value: ['Passage 1', 'Visual Passage', 'The corona is the outer layer.'].join('\n'),
+              confidence: null,
+              evidence: { documentId: source.id, pageNumber: 1, method: 'PDF_TEXT' },
+            },
+          },
+        },
+        {
+          id: 'visual-page-3',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: [
+              'Questions 1-1',
+              'Label the diagram below.',
+              'Choose NO MORE THAN TWO WORDS from the reading passage for each answer.',
+            ].join('\n'),
+            reasons: [],
+            passA: {
+              value: [
+                'Questions 1-1',
+                'Label the diagram below.',
+                'Choose NO MORE THAN TWO WORDS from the reading passage for each answer.',
+              ].join('\n'),
+              confidence: null,
+              evidence: { documentId: source.id, pageNumber: 3, method: 'PDF_TEXT' },
+            },
+          },
+        },
+        {
+          id: 'visual-page-4',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: '1. corona',
+            reasons: [],
+            passA: {
+              value: '1. corona',
+              confidence: null,
+              evidence: { documentId: source.id, pageNumber: 4, method: 'PDF_TEXT' },
+            },
+          },
+        },
+      ],
+      updatedAtMs: 10,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    expect(screen.getByText('Question 1 visual anchor')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 accepted answer')).toBeInTheDocument();
+    expect(screen.queryByText(/Question type for 1-1 requires review/)).not.toBeInTheDocument();
+  });
+
+  it('confirms an ambiguous protected answer inline on its semantic review card', async () => {
+    const user = userEvent.setup();
+    const source = {
+      id: 'answer-review-source',
+      name: 'answer-review.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'answer-review-bundle',
+      module: 'READING',
+      title: 'Answer Review',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verified = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: { documentId: source.id, pageNumber, method: 'PDF_TEXT' as const },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'answer-review-draft',
+      testId: 'answer-review-test',
+      sourceDocuments: [source],
+      fields: [
+        verified('ar1', 1, ['Passage 1', 'A Passage', 'Ninety percent is plastic.'].join('\n')),
+        verified('ar2', 2, [
+          'Questions 1-1',
+          'Answer the questions using NO MORE THAN TWO WORDS AND/OR A NUMBER.',
+          '1. What proportion is plastic?',
+        ].join('\n')),
+        verified('ar3', 3, ['Answers', '1. ninety/90 percent/per cent/%'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    const reviewText = screen.getByText('Question 1 accepted answer');
+    const card = reviewText.closest('article');
+    expect(card).not.toBeNull();
+    const cardUi = within(card as HTMLElement);
+    expect(cardUi.getByText('REVIEW_REQUIRED')).toBeInTheDocument();
+
+    await user.click(cardUi.getByRole('button', { name: 'Review & Confirm Question 1 accepted answer' }));
+    const input = cardUi.getByRole('textbox', { name: 'Accepted answers' });
+    await user.clear(input);
+    await user.type(input, 'ninety percent | 90 percent | 90%');
+    await user.click(cardUi.getByRole('button', { name: 'Confirm accepted answers' }));
+
+    expect(cardUi.getByText('CONFIRMED')).toBeInTheDocument();
+  });
+
+  it('confirms a visual answer position inline on the visual review card', async () => {
+    const user = userEvent.setup();
+    const source = {
+      id: 'anchor-source',
+      name: 'anchor.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'anchor-bundle',
+      module: 'READING',
+      title: 'Anchor Reading',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verified = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: { documentId: source.id, pageNumber, method: 'PDF_TEXT' as const },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'anchor-draft',
+      testId: 'anchor-test',
+      sourceDocuments: [source],
+      visualAssets: [{
+        id: 'anchor-diagram',
+        sourceDocumentId: source.id,
+        pageNumber: 2,
+        kind: 'DIAGRAM',
+        mediaType: 'image/png',
+        dataUrl: 'data:image/png;base64,cGFnZQ==',
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      }],
+      fields: [
+        verified('an1', 1, ['Passage 1', 'A Visual Passage', 'The corona is outermost.'].join('\n')),
+        verified('an2', 2, [
+          'Questions 1-1',
+          'Label the diagram below. Choose NO MORE THAN TWO WORDS from the passage.',
+          '1. Outer layer',
+        ].join('\n')),
+        verified('an3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    const label = screen.getByText('Question 1 visual anchor');
+    const card = label.closest('article');
+    expect(card).not.toBeNull();
+    const cardUi = within(card as HTMLElement);
+    await user.click(cardUi.getByRole('button', { name: 'Set position for Question 1' }));
+
+    const image = cardUi.getByRole('img', { name: 'Source visual for question 1' });
+    Object.defineProperty(image, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+    fireEvent.click(image, { clientX: 120, clientY: 80 });
+    await user.click(cardUi.getByRole('button', { name: 'Confirm answer position' }));
+
+    expect(cardUi.queryByText('REVIEW_REQUIRED')).not.toBeInTheDocument();
+  });
+
+  it('prepares a student-safe runnable Reading publication when Publish is pressed', async () => {
+    const user = userEvent.setup();
+    const source = {
+      id: 'publish-source',
+      name: 'publish.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'publish-bundle',
+      module: 'READING',
+      title: 'Published Reading',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verified = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: { documentId: source.id, pageNumber, method: 'PDF_TEXT' as const },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'publish-draft',
+      testId: 'publish-test',
+      sourceDocuments: [source],
+      fields: [
+        verified('pub1', 1, ['Passage 1', 'A Passage', 'The outer layer is the corona.'].join('\n')),
+        verified('pub2', 2, [
+          'Questions 1-1',
+          'Answer the questions using NO MORE THAN TWO WORDS.',
+          '1. What is the outer layer called?',
+        ].join('\n')),
+        verified('pub3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+    const publications: unknown[] = [];
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+        onPublish={(publication) => {
+          publications.push(publication);
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Publish imported test' }));
+
+    expect(publications).toHaveLength(1);
+    const publication = publications[0] as {
+      studentPackage: { title: string; modules: Array<{ sections: Array<{ questionGroups: Array<{ questions: Array<{ number: number; type: string }> }> }> }> };
+      protectedAnswers: Record<string, { canonical: string[] }>;
+    };
+    expect(publication.studentPackage.title).toBe('Published Reading');
+    expect(publication.studentPackage.modules[0]?.sections[0]?.questionGroups[0]?.questions[0]).toMatchObject({
+      number: 1,
+      type: 'SHORT_ANSWER',
+    });
+    expect(publication.protectedAnswers['q-1']?.canonical).toEqual(['corona']);
+    expect(JSON.stringify(publication.studentPackage)).not.toContain('canonical');
+  });
+
 });

@@ -1,4 +1,5 @@
-import type { VerificationResult } from '../domain';
+import type { ImportBundle } from '../bundle/domain';
+import type { NormalizedRect, VerificationResult } from '../domain';
 
 export type SourceDocumentKind = 'PDF' | 'IMAGE' | 'ANSWER_KEY' | 'AUDIO' | 'OTHER';
 
@@ -29,11 +30,22 @@ export interface ImportFieldRecord {
   confirmedValue?: string;
 }
 
+export interface ImportVisualAssetRecord {
+  id: string;
+  sourceDocumentId: string;
+  pageNumber: number;
+  kind: 'DIAGRAM' | 'TABLE';
+  mediaType: string;
+  dataUrl: string;
+  crop: NormalizedRect;
+}
+
 export interface ImportDraft {
   id: string;
   testId: string;
   sourceDocuments: SourceDocumentRecord[];
   fields: ImportFieldRecord[];
+  visualAssets?: ImportVisualAssetRecord[];
   updatedAtMs: number;
 }
 
@@ -42,4 +54,8 @@ export interface ImportRepository {
   saveDraft(draft: ImportDraft): Promise<void>;
   deleteDraft(id: string): Promise<void>;
   listDrafts(): Promise<ImportDraft[]>;
+  loadBundle(id: string): Promise<ImportBundle | null>;
+  saveBundle(bundle: ImportBundle): Promise<void>;
+  deleteBundle(id: string): Promise<void>;
+  listBundles(): Promise<ImportBundle[]>;
 }

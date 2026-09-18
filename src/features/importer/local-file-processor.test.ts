@@ -70,7 +70,7 @@ describe('createLocalImportProcessor', () => {
         },
       });
       expect(draft.fields[0].verification.passA).toMatchObject({
-        value: 'Urban libraries are changing. Choose ONE WORD ONLY.',
+        value: 'Urban libraries are changing.\nChoose ONE WORD ONLY.',
         evidence: {
           pageNumber: 1,
           method: 'PDF_TEXT',
@@ -213,5 +213,90 @@ describe('createLocalImportProcessor', () => {
         }),
       ),
     ).rejects.toThrow(/not supported/i);
+  });
+
+  it('retains rendered visual snapshots for diagram and table question pages', async () => {
+    const pages: ExtractedPdfPage[] = [
+      {
+        pageNumber: 3,
+        width: 600,
+        height: 800,
+        kind: 'MIXED',
+        signals: {
+          textItemCount: 2,
+          nonWhitespaceCharacters: 45,
+          imageObjectCount: 2,
+          pageArea: 480_000,
+        },
+        items: [
+          {
+            text: 'Questions 1-4',
+            pageNumber: 3,
+            rect: { x: 0.1, y: 0.1, width: 0.3, height: 0.04 },
+          },
+          {
+            text: 'Label the diagram below with the names of the layers of the sun.',
+            pageNumber: 3,
+            rect: { x: 0.1, y: 0.16, width: 0.7, height: 0.05 },
+          },
+        ],
+      },
+      {
+        pageNumber: 11,
+        width: 600,
+        height: 800,
+        kind: 'DIGITAL_TEXT',
+        signals: {
+          textItemCount: 2,
+          nonWhitespaceCharacters: 35,
+          imageObjectCount: 0,
+          pageArea: 480_000,
+        },
+        items: [
+          {
+            text: 'Questions 28-31',
+            pageNumber: 11,
+            rect: { x: 0.1, y: 0.1, width: 0.3, height: 0.04 },
+          },
+          {
+            text: 'Complete the table below.',
+            pageNumber: 11,
+            rect: { x: 0.1, y: 0.16, width: 0.5, height: 0.05 },
+          },
+        ],
+      },
+    ];
+    const renderPdfPage = vi.fn(async (_data: ArrayBuffer, pageNumber: number) =>
+      new Blob([`visual-page-${pageNumber}`], { type: 'image/png' }),
+    );
+
+    const processor = createLocalImportProcessor({
+      extractPdf: async () => pages,
+      renderPdfPage,
+      createId: idFactory(),
+      now: () => 5_000,
+    });
+
+    const draft = await processor(
+      new File(['visual-pdf'], 'reading.pdf', { type: 'application/pdf' }),
+    );
+
+    expect(renderPdfPage).toHaveBeenCalledTimes(2);
+    expect(draft.visualAssets).toEqual([
+      expect.objectContaining({
+        pageNumber: 3,
+        kind: 'DIAGRAM',
+        mediaType: 'image/png',
+        dataUrl: expect.stringMatching(/^data:image\/png;base64,/),
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      }),
+      expect.objectContaining({
+        pageNumber: 11,
+        kind: 'TABLE',
+        mediaType: 'image/png',
+        dataUrl: expect.stringMatching(/^data:image\/png;base64,/),
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      }),
+    ]);
   });
 });
