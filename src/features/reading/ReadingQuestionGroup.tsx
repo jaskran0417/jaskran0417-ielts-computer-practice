@@ -81,6 +81,7 @@ function VisualQuestionGroup({
     <div className="visual-group-shell">
       <div
         className="visual-group-stage"
+        data-testid="visual-question-group"
         style={{ aspectRatio: String(cropRatio) }}
         data-visual-kind={kind.toLowerCase()}
       >
@@ -232,6 +233,8 @@ export function ReadingQuestionGroup({
           return (
             <article
               key={question.id}
+              data-testid={`question-panel-${question.number}`}
+              data-active={active ? 'true' : 'false'}
               className={`question-item${active ? ' active' : ''}`}
               aria-current={active ? 'true' : undefined}
               onClick={() => onNavigate(question.id)}
