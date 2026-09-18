@@ -88,6 +88,7 @@ describe('Reading exam', () => {
     selection?.addRange(range);
     fireEvent.mouseUp(paragraph!);
 
+    expect(await screen.findByText('Selected: “Cities”')).toBeInTheDocument();
     const highlightButton = screen.getByRole('button', {
       name: 'Highlight selection',
     });
