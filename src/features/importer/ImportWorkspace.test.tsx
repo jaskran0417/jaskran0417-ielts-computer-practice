@@ -102,7 +102,7 @@ describe('ImportWorkspace', () => {
     expect(screen.getByText('REVIEW_REQUIRED')).toBeInTheDocument();
     expect(screen.getByText('UNREADABLE')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Review QUESTION_TEXT' }));
+    await user.click(screen.getByRole('button', { name: 'Review & Confirm QUESTION_TEXT' }));
 
     const evidence = screen.getByRole('region', { name: 'Source evidence' });
     expect(within(evidence).getByText('Page 2')).toBeInTheDocument();
