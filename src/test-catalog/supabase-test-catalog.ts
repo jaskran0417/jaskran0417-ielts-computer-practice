@@ -14,19 +14,22 @@ interface QueryResult<T> {
   error: QueryError | null;
 }
 
-interface SupabaseQueryChain {
-  select(columns: string): SupabaseQueryChain;
-  eq(column: string, value: unknown): SupabaseQueryChain;
-  not(column: string, operator: string, value: unknown): SupabaseQueryChain;
-  order?(
+interface SupabaseFilterChain {
+  eq(column: string, value: unknown): SupabaseFilterChain;
+  not(column: string, operator: string, value: unknown): SupabaseFilterChain;
+  order(
     column: string,
     options?: { ascending?: boolean },
-  ): Promise<QueryResult<unknown[]>>;
-  maybeSingle?(): Promise<QueryResult<unknown>>;
+  ): PromiseLike<QueryResult<unknown[]>>;
+  maybeSingle(): PromiseLike<QueryResult<unknown>>;
+}
+
+interface SupabaseQueryBuilder {
+  select(columns: string): SupabaseFilterChain;
 }
 
 export interface SupabaseCatalogClient {
-  from(table: string): SupabaseQueryChain;
+  from(table: string): SupabaseQueryBuilder;
 }
 
 interface VersionRow {
@@ -109,10 +112,6 @@ export class SupabaseTestCatalog implements TestCatalogRepository {
       .not('published_at', 'is', null)
       .eq('tests.status', 'published');
 
-    if (!query.order) {
-      throw new Error('Supabase catalog query does not support ordering');
-    }
-
     const { data, error } = await query.order('version_number', {
       ascending: false,
     });
@@ -152,10 +151,6 @@ export class SupabaseTestCatalog implements TestCatalogRepository {
       .eq('test_id', testId)
       .not('published_at', 'is', null)
       .eq('tests.status', 'published');
-
-    if (!query.maybeSingle) {
-      throw new Error('Supabase catalog query does not support maybeSingle');
-    }
 
     const { data, error } = await query.maybeSingle();
 
