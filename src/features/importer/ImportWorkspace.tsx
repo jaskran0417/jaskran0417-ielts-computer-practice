@@ -1,8 +1,17 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
-import type { ImportDraft, ImportFieldRecord } from './local/import-repository';
+import { useMemo, useState } from 'react';
+import {
+  assignSourceRole,
+} from './bundle/import-bundle';
+import type {
+  ImportBundle,
+  ImportModule,
+  ImportSourceAssignment,
+} from './bundle/domain';
 import { ConflictEditor } from './components/ConflictEditor';
+import { ImportSourceManager } from './components/ImportSourceManager';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
 import { VerificationBadge } from './components/VerificationBadge';
+import type { ImportDraft, ImportFieldRecord } from './local/import-repository';
 import './import-workspace.css';
 
 export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
@@ -10,8 +19,18 @@ export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
 export interface ImportWorkspaceProps {
   processFile: ImportFileProcessor;
   initialDraft?: ImportDraft | null;
+  initialBundle?: ImportBundle | null;
   onDraftChange?(draft: ImportDraft): void;
+  onBundleChange?(bundle: ImportBundle): void;
   onPublish?(draft: ImportDraft): void;
+}
+
+function createWorkspaceId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function isResolved(field: ImportFieldRecord): boolean {
@@ -48,12 +67,35 @@ function fieldPreview(field: ImportFieldRecord): string {
   );
 }
 
+function mergeDraft(
+  current: ImportDraft | null,
+  imported: ImportDraft,
+  updatedAtMs: number,
+): ImportDraft {
+  if (!current) {
+    return {
+      ...imported,
+      updatedAtMs,
+    };
+  }
+
+  return {
+    ...current,
+    sourceDocuments: [...current.sourceDocuments, ...imported.sourceDocuments],
+    fields: [...current.fields, ...imported.fields],
+    updatedAtMs,
+  };
+}
+
 export function ImportWorkspace({
   processFile,
   initialDraft = null,
+  initialBundle = null,
   onDraftChange,
+  onBundleChange,
   onPublish,
 }: ImportWorkspaceProps) {
+  const [bundle, setBundle] = useState<ImportBundle | null>(initialBundle);
   const [draft, setDraft] = useState<ImportDraft | null>(initialDraft);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(() =>
     preferredFieldId(initialDraft),
@@ -66,29 +108,85 @@ export function ImportWorkspace({
     [draft, selectedFieldId],
   );
 
-  const unresolvedCriticalCount = draft?.fields.filter((field) => !isResolved(field)).length ?? 0;
+  const unresolvedCriticalCount =
+    draft?.fields.filter((field) => !isResolved(field)).length ?? 0;
 
-  async function importFile(file: File) {
+  function createBundle(module: ImportModule, title: string) {
+    const nowMs = Date.now();
+    const nextBundle: ImportBundle = {
+      id: createWorkspaceId(),
+      module,
+      title,
+      sourceDocuments: [],
+      assignments: [],
+      status: 'COLLECTING_SOURCES',
+      updatedAtMs: nowMs,
+    };
+
+    setBundle(nextBundle);
+    setError(null);
+    onBundleChange?.(nextBundle);
+  }
+
+  async function addFiles(files: File[]) {
+    if (!bundle || files.length === 0) return;
+
     setIsImporting(true);
     setError(null);
+
     try {
-      const nextDraft = await processFile(file);
-      setDraft(nextDraft);
-      setSelectedFieldId(preferredFieldId(nextDraft));
-      onDraftChange?.(nextDraft);
+      let nextBundle = bundle;
+      let nextDraft = draft;
+
+      for (const file of files) {
+        const imported = await processFile(file);
+        const nowMs = Date.now();
+        const existingIds = new Set(
+          nextBundle.sourceDocuments.map((document) => document.id),
+        );
+        const newDocuments = imported.sourceDocuments.filter(
+          (document) => !existingIds.has(document.id),
+        );
+
+        nextBundle = {
+          ...nextBundle,
+          sourceDocuments: [...nextBundle.sourceDocuments, ...newDocuments],
+          updatedAtMs: nowMs,
+        };
+
+        nextDraft = mergeDraft(nextDraft, imported, nowMs);
+      }
+
+      setBundle(nextBundle);
+      onBundleChange?.(nextBundle);
+
+      if (nextDraft) {
+        setDraft(nextDraft);
+        setSelectedFieldId(preferredFieldId(nextDraft));
+        onDraftChange?.(nextDraft);
+      }
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Unable to import this file';
+      const message =
+        cause instanceof Error ? cause.message : 'Unable to import these files';
       setError(message);
-      setDraft(null);
-      setSelectedFieldId(null);
     } finally {
       setIsImporting(false);
     }
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) void importFile(file);
+  function assignRole(assignment: ImportSourceAssignment) {
+    if (!bundle) return;
+
+    try {
+      const nextBundle = assignSourceRole(bundle, assignment, Date.now());
+      setBundle(nextBundle);
+      setError(null);
+      onBundleChange?.(nextBundle);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Unable to assign this source role',
+      );
+    }
   }
 
   function confirmField(value: string) {
@@ -122,42 +220,49 @@ export function ImportWorkspace({
           <p className="page-eyebrow">Import / Review</p>
           <h1 id="import-workspace-title">Import test material</h1>
           <p className="page-subtitle">
-            Bring in local source material, inspect the extraction evidence, and explicitly resolve
-            uncertain critical content before publication.
+            Choose the module, add all source material, assign source roles, then
+            convert the verified material into a real runnable test.
           </p>
         </div>
         <span className="local-badge">Local-first review</span>
       </div>
 
-      <div className="import-upload-card">
-        <label className="import-file-control">
-          <span>Choose source file</span>
-          <input
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.json,.docx,audio/*"
-            onChange={handleFileChange}
-            disabled={isImporting}
-          />
-        </label>
-        <div className="import-upload-copy">
-          <strong>{isImporting ? 'Importing…' : 'PDF, image, answer key, or audio source'}</strong>
-          <small>Original evidence stays attached to the draft. Uncertain critical fields never publish silently.</small>
-        </div>
-      </div>
+      <ImportSourceManager
+        bundle={bundle}
+        onCreate={createBundle}
+        onAddFiles={(files) => void addFiles(files)}
+        onAssign={assignRole}
+      />
 
-      {error ? <div className="import-error" role="alert">{error}</div> : null}
+      {isImporting ? (
+        <div className="import-storage-status" role="status">
+          Extracting source material…
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="import-error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {!draft ? (
         <div className="import-empty-state">
           <h2>No source loaded</h2>
-          <p>Choose a local file to start an evidence-backed import draft.</p>
+          <p>
+            Choose a module first, then add the question paper, answer key, and
+            any other source files for the same test.
+          </p>
         </div>
       ) : (
         <>
           <div className="import-summary-bar">
             <div>
-              <span>Source</span>
-              <strong>{draft.sourceDocuments[0]?.name ?? 'Imported source'}</strong>
+              <span>Sources</span>
+              <strong>
+                {draft.sourceDocuments.length} file
+                {draft.sourceDocuments.length === 1 ? '' : 's'}
+              </strong>
             </div>
             <div>
               <span>Fields</span>
@@ -182,7 +287,9 @@ export function ImportWorkspace({
                 {draft.fields.map((field) => (
                   <article
                     key={field.id}
-                    className={`import-field-card${selectedFieldId === field.id ? ' selected' : ''}`}
+                    className={`import-field-card${
+                      selectedFieldId === field.id ? ' selected' : ''
+                    }`}
                   >
                     <div className="import-field-card-heading">
                       <strong>{field.kind}</strong>
@@ -201,7 +308,9 @@ export function ImportWorkspace({
                           : `View evidence ${field.kind}`}
                       </button>
                     </div>
-                    {selectedFieldId === field.id && field.critical && !isResolved(field) ? (
+                    {selectedFieldId === field.id &&
+                    field.critical &&
+                    !isResolved(field) ? (
                       <ConflictEditor
                         key={field.id}
                         field={field}
@@ -227,11 +336,15 @@ export function ImportWorkspace({
                 <strong>All critical imported fields are resolved</strong>
               ) : (
                 <strong>
-                  {unresolvedCriticalCount} critical field{unresolvedCriticalCount === 1 ? '' : 's'} still{' '}
+                  {unresolvedCriticalCount} critical field
+                  {unresolvedCriticalCount === 1 ? '' : 's'} still{' '}
                   {unresolvedCriticalCount === 1 ? 'requires' : 'require'} review
                 </strong>
               )}
-              <small>Publication stays blocked until every critical field is verified or explicitly confirmed.</small>
+              <small>
+                Publication stays blocked until every critical field is verified or
+                explicitly confirmed.
+              </small>
             </div>
             <button
               type="button"
