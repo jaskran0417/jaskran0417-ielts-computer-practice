@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { ImportBundle } from './bundle/domain';
 import type {
   ImportDraft,
   ImportRepository,
@@ -55,6 +56,7 @@ const restoredDraft: ImportDraft = {
 
 class FakeImportRepository implements ImportRepository {
   saved: ImportDraft[] = [];
+  bundles: ImportBundle[] = [];
 
   constructor(private readonly drafts: ImportDraft[]) {}
 
@@ -70,6 +72,22 @@ class FakeImportRepository implements ImportRepository {
 
   async listDrafts() {
     return [...this.drafts];
+  }
+
+  async loadBundle(id: string) {
+    return this.bundles.find((bundle) => bundle.id === id) ?? null;
+  }
+
+  async saveBundle(bundle: ImportBundle) {
+    this.bundles = [...this.bundles.filter((item) => item.id !== bundle.id), bundle];
+  }
+
+  async deleteBundle(id: string) {
+    this.bundles = this.bundles.filter((bundle) => bundle.id !== id);
+  }
+
+  async listBundles() {
+    return [...this.bundles];
   }
 }
 
