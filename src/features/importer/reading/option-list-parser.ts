@@ -1,9 +1,7 @@
-import type { ReadingQuestionType } from './types';
-
-export interface ReadingChoiceOptionDraft {
-  id: string;
-  label: string;
-}
+import type {
+  ReadingChoiceOptionDraft,
+  ReadingQuestionType,
+} from './types';
 
 function alphaRange(start: string, end: string): string[] {
   const first = start.charCodeAt(0);
