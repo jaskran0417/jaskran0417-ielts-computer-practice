@@ -1,5 +1,10 @@
-import { useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import type { NormalizedRect } from '../domain';
+import {
+  anchorWithinCrop,
+  visualPresentationCrop,
+  type VisualPresentationKind,
+} from '../../../question-types/visual-layout';
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -8,17 +13,28 @@ function clamp(value: number, minimum: number, maximum: number): number {
 export function VisualAnchorEditor({
   questionNumber,
   imageUrl,
+  visualKind,
   initialAnchor,
   onConfirm,
 }: {
   questionNumber: number;
   imageUrl: string;
+  visualKind: VisualPresentationKind;
   initialAnchor?: NormalizedRect;
   onConfirm(anchor: NormalizedRect): void;
 }) {
   const [anchor, setAnchor] = useState<NormalizedRect | null>(initialAnchor ?? null);
   const [boxWidth, setBoxWidth] = useState(initialAnchor?.width ?? 0.22);
   const [boxHeight, setBoxHeight] = useState(initialAnchor?.height ?? 0.07);
+  const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
+  const previewCrop = useMemo(
+    () => (anchor ? visualPresentationCrop([anchor], visualKind) : null),
+    [anchor, visualKind],
+  );
+  const previewAnchor = useMemo(
+    () => (anchor && previewCrop ? anchorWithinCrop(anchor, previewCrop) : null),
+    [anchor, previewCrop],
+  );
 
   function place(event: MouseEvent<HTMLImageElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -49,14 +65,30 @@ export function VisualAnchorEditor({
     );
   }
 
+  const previewRatio =
+    previewCrop && naturalRatio
+      ? (naturalRatio * previewCrop.width) / previewCrop.height
+      : visualKind === 'DIAGRAM'
+        ? 1.3
+        : 1.8;
+
   return (
     <div className="visual-anchor-editor">
-      <p>Tap the source image where the answer box for Question {questionNumber} belongs.</p>
+      <p>
+        Tap the source image where the answer box for Question {questionNumber} belongs.
+        The full source page is only evidence; the student player crops the useful visual area.
+      </p>
       <div className="visual-anchor-stage">
         <img
           src={imageUrl}
           alt={`Source visual for question ${questionNumber}`}
           onClick={place}
+          onLoad={(event) => {
+            const image = event.currentTarget;
+            if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+              setNaturalRatio(image.naturalWidth / image.naturalHeight);
+            }
+          }}
         />
         {anchor ? (
           <span
@@ -95,6 +127,43 @@ export function VisualAnchorEditor({
           />
         </label>
       </div>
+
+      {previewCrop && previewAnchor ? (
+        <div className="visual-anchor-student-preview">
+          <div>
+            <strong>Student preview</strong>
+            <small>This is approximately how the visual and answer box will appear in Reading.</small>
+          </div>
+          <div
+            className="visual-anchor-student-stage"
+            style={{ aspectRatio: String(previewRatio) }}
+          >
+            <img
+              src={imageUrl}
+              alt=""
+              aria-hidden="true"
+              style={{
+                left: `${(-previewCrop.x / previewCrop.width) * 100}%`,
+                top: `${(-previewCrop.y / previewCrop.height) * 100}%`,
+                width: `${100 / previewCrop.width}%`,
+              }}
+            />
+            <span
+              className="visual-anchor-student-answer"
+              style={{
+                left: `${previewAnchor.x * 100}%`,
+                top: `${previewAnchor.y * 100}%`,
+                width: `${previewAnchor.width * 100}%`,
+                minHeight: `${previewAnchor.height * 100}%`,
+              }}
+            >
+              <b>{questionNumber}</b>
+              <span>answer</span>
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       <button
         type="button"
         className="primary-action"

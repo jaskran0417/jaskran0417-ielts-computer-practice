@@ -16,6 +16,32 @@ import type {
   StructuredReadingDraft,
 } from './types';
 
+function isRepeatedReadingPageFurniture(line: string): boolean {
+  return (
+    /^IELTS Advantage Practice Reading Test\s*\d*$/i.test(line) ||
+    /^Computer Test Practice$/i.test(line)
+  );
+}
+
+function isPracticeFooterStart(line: string): boolean {
+  return (
+    /^Note:\s*This is not a real IELTS test\b/i.test(line) ||
+    /^After you(?:['’])?ve tried these questions\b/i.test(line)
+  );
+}
+
+function cleanPassagePageLines(lines: string[]): string[] {
+  const cleaned: string[] = [];
+
+  for (const line of lines) {
+    if (isRepeatedReadingPageFurniture(line)) continue;
+    if (isPracticeFooterStart(line)) break;
+    cleaned.push(line);
+  }
+
+  return cleaned;
+}
+
 function numberedPrompts(
   text: string,
   startQuestion: number,
@@ -92,7 +118,7 @@ function passageTextForBlocks(
       lines = lines.slice(0, firstQuestionIndex);
     }
 
-    result.push(...lines);
+    result.push(...cleanPassagePageLines(lines));
   }
 
   return result;
