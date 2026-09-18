@@ -91,7 +91,7 @@ begin
     from jsonb_path_query(
       p_student_content,
       '$.modules[*].sections[*].questionGroups[*].questions[*].id'
-    ) as value
+    ) as question(value)
   )
   select count(*), count(distinct question_id)
   into v_question_count, v_answer_count
@@ -103,8 +103,9 @@ begin
       message = 'Student test questions must have unique non-empty IDs';
   end if;
 
-  select jsonb_object_length(p_answers)
-  into v_answer_count;
+  select count(*)
+  into v_answer_count
+  from jsonb_object_keys(p_answers);
 
   if v_answer_count <> v_question_count then
     raise exception using
@@ -118,7 +119,7 @@ begin
       from jsonb_path_query(
         p_student_content,
         '$.modules[*].sections[*].questionGroups[*].questions[*].id'
-      ) as value
+      ) as question(value)
     )
     select 1
     from student_questions
@@ -129,14 +130,14 @@ begin
       from jsonb_path_query(
         p_student_content,
         '$.modules[*].sections[*].questionGroups[*].questions[*].id'
-      ) as value
+      ) as question(value)
     )
     select 1
-    from jsonb_object_keys(p_answers) as answer_id
+    from jsonb_object_keys(p_answers) as answer_keys(answer_id)
     where not exists (
       select 1
       from student_questions
-      where student_questions.question_id = answer_id
+      where student_questions.question_id = answer_keys.answer_id
     )
   ) then
     raise exception using
