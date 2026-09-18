@@ -83,6 +83,7 @@ export function QuestionRenderer({
         />
       );
     case 'SHORT_ANSWER':
+    case 'FORM_COMPLETION':
     case 'SENTENCE_COMPLETION':
     case 'SUMMARY_COMPLETION':
     case 'NOTE_COMPLETION':
