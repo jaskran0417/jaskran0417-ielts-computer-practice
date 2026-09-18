@@ -140,7 +140,9 @@ function buildQuestionGroup(
   const questions: ReadingQuestionDraft[] = [];
 
   for (let number = range.start; number <= range.end; number += 1) {
-    const prompt = prompts.get(number);
+    const prompt =
+      prompts.get(number) ??
+      (recognition.type === 'DIAGRAM_LABEL_COMPLETION' ? `Label ${number}` : undefined);
 
     if (!prompt) {
       reviewItems.push({
