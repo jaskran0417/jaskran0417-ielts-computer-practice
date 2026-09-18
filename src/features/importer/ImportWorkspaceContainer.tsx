@@ -126,6 +126,23 @@ export function ImportWorkspaceContainer({
       });
   }
 
+  async function clearSavedImport(ids: { bundleId?: string; draftId?: string }) {
+    setStorageError(null);
+    setStorageStatus('Clearing local import…');
+
+    try {
+      const operations: Promise<void>[] = [];
+      if (ids.bundleId) operations.push(imports.deleteBundle(ids.bundleId));
+      if (ids.draftId) operations.push(imports.deleteDraft(ids.draftId));
+      await Promise.all(operations);
+      setStorageStatus('Import cleared');
+    } catch (cause) {
+      setStorageStatus(null);
+      setStorageError(errorMessage(cause));
+      throw cause;
+    }
+  }
+
   async function publishTest(publication: PreparedReadingPublication) {
     setStorageError(null);
     setStorageStatus('Publishing locally…');
@@ -172,6 +189,7 @@ export function ImportWorkspaceContainer({
         onDraftChange={persistDraft}
         onBundleChange={persistBundle}
         onPublish={publishTest}
+        onClearImport={clearSavedImport}
       />
     </>
   );

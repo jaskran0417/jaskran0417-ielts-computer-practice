@@ -32,6 +32,7 @@ export interface ImportWorkspaceProps {
   onDraftChange?(draft: ImportDraft): void;
   onBundleChange?(bundle: ImportBundle): void;
   onPublish?(publication: PreparedReadingPublication): void | Promise<void>;
+  onClearImport?(ids: { bundleId?: string; draftId?: string }): void | Promise<void>;
 }
 
 function createWorkspaceId(): string {
@@ -64,6 +65,13 @@ function preferredFieldId(draft: ImportDraft | null | undefined): string | null 
     ) ?? draft.fields[0];
 
   return preferred?.id ?? null;
+}
+
+function fieldBelongsToSource(field: ImportFieldRecord, sourceDocumentId: string): boolean {
+  return (
+    field.verification.passA?.evidence.documentId === sourceDocumentId ||
+    field.verification.passB?.evidence.documentId === sourceDocumentId
+  );
 }
 
 function fieldPreview(field: ImportFieldRecord): string {
@@ -107,6 +115,7 @@ export function ImportWorkspace({
   onDraftChange,
   onBundleChange,
   onPublish,
+  onClearImport,
 }: ImportWorkspaceProps) {
   const [bundle, setBundle] = useState<ImportBundle | null>(initialBundle);
   const [draft, setDraft] = useState<ImportDraft | null>(initialDraft);
@@ -228,6 +237,65 @@ export function ImportWorkspace({
       setError(message);
     } finally {
       setIsImporting(false);
+    }
+  }
+
+  function removeSource(sourceDocumentId: string) {
+    if (!bundle) return;
+    const nowMs = Date.now();
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      sourceDocuments: bundle.sourceDocuments.filter((source) => source.id !== sourceDocumentId),
+      assignments: bundle.assignments.filter((assignment) => assignment.sourceDocumentId !== sourceDocumentId),
+      updatedAtMs: nowMs,
+    };
+    const nextDraft = draft
+      ? {
+          ...draft,
+          sourceDocuments: draft.sourceDocuments.filter((source) => source.id !== sourceDocumentId),
+          fields: draft.fields.filter((field) => !fieldBelongsToSource(field, sourceDocumentId)),
+          visualAssets: (draft.visualAssets ?? []).filter((asset) => asset.sourceDocumentId !== sourceDocumentId),
+          updatedAtMs: nowMs,
+        }
+      : null;
+
+    setBundle(nextBundle);
+    setDraft(nextDraft);
+    setSelectedFieldId(preferredFieldId(nextDraft));
+    setError(null);
+    onBundleChange?.(nextBundle);
+    if (nextDraft) onDraftChange?.(nextDraft);
+  }
+
+  function removeAssignment(index: number) {
+    if (!bundle) return;
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      assignments: bundle.assignments.filter((_, assignmentIndex) => assignmentIndex !== index),
+      updatedAtMs: Date.now(),
+    };
+    setBundle(nextBundle);
+    setError(null);
+    onBundleChange?.(nextBundle);
+  }
+
+  async function clearImport() {
+    const ids = {
+      ...(bundle?.id ? { bundleId: bundle.id } : {}),
+      ...(draft?.id ? { draftId: draft.id } : {}),
+    };
+    setBundle(null);
+    setDraft(null);
+    setSelectedFieldId(null);
+    setExpandedSemanticItemId(null);
+    setError(null);
+
+    try {
+      await onClearImport?.(ids);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Unable to clear the saved import',
+      );
     }
   }
 
@@ -364,6 +432,9 @@ export function ImportWorkspace({
         onCreate={createBundle}
         onAddFiles={(files) => void addFiles(files)}
         onAssign={assignRole}
+        onRemoveSource={removeSource}
+        onRemoveAssignment={removeAssignment}
+        onClearImport={() => void clearImport()}
       />
 
       {isImporting ? (
