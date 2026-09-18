@@ -5,14 +5,26 @@ import {
   type ImportFileProcessor,
 } from './ImportWorkspace';
 import { IndexedDbImportRepository } from './local/indexeddb-import-repository';
+import type { PreparedReadingPublication } from './publication/import-publication';
+import { IndexedDbProtectedAnswerRepository } from '../../scoring/indexeddb-protected-answer-repository';
+import { IndexedDbTestCatalog } from '../../test-catalog/indexeddb-test-catalog';
+import { LocalImportedTestPublisher } from '../../test-catalog/local-imported-test-publisher';
 import type {
   ImportDraft,
   ImportRepository,
 } from './local/import-repository';
 
+export interface ImportPublisher {
+  publish(
+    publication: PreparedReadingPublication,
+  ): Promise<{ testId: string; versionId: string }>;
+}
+
 export interface ImportWorkspaceContainerProps {
   processFile: ImportFileProcessor;
   repository?: ImportRepository;
+  publisher?: ImportPublisher;
+  onPublished?(): void | Promise<void>;
 }
 
 type LoadState =
@@ -32,9 +44,21 @@ function errorMessage(cause: unknown): string {
 export function ImportWorkspaceContainer({
   processFile,
   repository,
+  publisher,
+  onPublished,
 }: ImportWorkspaceContainerProps) {
   const defaultRepository = useMemo(() => new IndexedDbImportRepository(), []);
+  const defaultCatalog = useMemo(() => new IndexedDbTestCatalog(), []);
+  const defaultProtectedAnswers = useMemo(
+    () => new IndexedDbProtectedAnswerRepository(),
+    [],
+  );
+  const defaultPublisher = useMemo(
+    () => new LocalImportedTestPublisher(defaultCatalog, defaultProtectedAnswers),
+    [defaultCatalog, defaultProtectedAnswers],
+  );
   const imports = repository ?? defaultRepository;
+  const testPublisher = publisher ?? defaultPublisher;
   const [loadState, setLoadState] = useState<LoadState>({
     status: 'LOADING',
     draft: null,
@@ -102,6 +126,21 @@ export function ImportWorkspaceContainer({
       });
   }
 
+  async function publishTest(publication: PreparedReadingPublication) {
+    setStorageError(null);
+    setStorageStatus('Publishing locally…');
+
+    try {
+      await testPublisher.publish(publication);
+      setStorageStatus('Published locally');
+      await onPublished?.();
+    } catch (cause) {
+      setStorageStatus(null);
+      setStorageError(errorMessage(cause));
+      throw cause;
+    }
+  }
+
   if (loadState.status === 'LOADING') {
     return (
       <section className="import-loading" aria-live="polite">
@@ -132,6 +171,7 @@ export function ImportWorkspaceContainer({
         initialBundle={loadState.bundle}
         onDraftChange={persistDraft}
         onBundleChange={persistBundle}
+        onPublish={publishTest}
       />
     </>
   );
