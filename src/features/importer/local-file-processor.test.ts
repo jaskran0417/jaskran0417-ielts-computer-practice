@@ -9,7 +9,7 @@ function idFactory() {
 }
 
 describe('createLocalImportProcessor', () => {
-  it('turns selectable PDF text into an evidence-backed review draft without remote APIs', async () => {
+  it('treats successfully extracted selectable PDF text as verified without remote APIs', async () => {
     const pages: ExtractedPdfPage[] = [
       {
         pageNumber: 1,
@@ -65,8 +65,8 @@ describe('createLocalImportProcessor', () => {
         kind: 'PASSAGE_TEXT',
         critical: true,
         verification: {
-          state: 'REVIEW_REQUIRED',
-          normalizedValue: null,
+          state: 'VERIFIED',
+          normalizedValue: 'Urban libraries are changing.\nChoose ONE WORD ONLY.',
         },
       });
       expect(draft.fields[0].verification.passA).toMatchObject({
@@ -282,6 +282,10 @@ describe('createLocalImportProcessor', () => {
     );
 
     expect(renderPdfPage).toHaveBeenCalledTimes(2);
+    expect(draft.fields.map((field) => field.verification.state)).toEqual([
+      'VERIFIED',
+      'VERIFIED',
+    ]);
     expect(draft.visualAssets).toEqual([
       expect.objectContaining({
         pageNumber: 3,
