@@ -43,7 +43,27 @@ const processedDraft: ImportDraft = {
       sourceBytes: new TextEncoder().encode('%PDF-source').buffer,
     },
   ],
-  fields: [],
+  fields: [
+    {
+      id: 'page-1',
+      kind: 'PASSAGE_TEXT',
+      critical: true,
+      verification: {
+        state: 'REVIEW_REQUIRED',
+        normalizedValue: null,
+        reasons: ['Selectable PDF text requires independent visual confirmation before publication'],
+        passA: {
+          value: 'Passage 1 The Layers of the Sun',
+          confidence: null,
+          evidence: {
+            documentId: 'source-1',
+            pageNumber: 1,
+            method: 'PDF_TEXT',
+          },
+        },
+      },
+    },
+  ],
   updatedAtMs: 2_000,
 };
 
@@ -110,11 +130,11 @@ describe('ImportWorkspaceContainer', () => {
     await waitFor(() =>
       expect(repository.saved[repository.saved.length - 1]?.sourceDocuments).toHaveLength(1),
     );
+    const saved = repository.saved[repository.saved.length - 1];
     expect(
-      new TextDecoder().decode(
-        repository.saved[repository.saved.length - 1]?.sourceDocuments[0].sourceBytes,
-      ),
+      new TextDecoder().decode(saved?.sourceDocuments[0].sourceBytes),
     ).toBe('%PDF-source');
+    expect(saved?.extractedFields).toEqual(processedDraft.fields);
   });
 
   it('reports local persistence failure without discarding the in-memory bundle', async () => {
