@@ -59,4 +59,15 @@ describe('parseAnswerExpression', () => {
       'the queen',
     ]);
   });
+
+  it('expands the percentage alternatives used by the real Reading answer key', () => {
+    expect(accepted('ninety/90 percent/per cent/%')).toEqual([
+      '90 per cent',
+      '90 percent',
+      '90%',
+      'ninety per cent',
+      'ninety percent',
+    ]);
+  });
+
 });
