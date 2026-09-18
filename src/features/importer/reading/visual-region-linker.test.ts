@@ -9,6 +9,7 @@ function diagramGroup(): StructuredQuestionGroupDraft {
     pageNumber: 3,
     sourceText: 'Questions 1-4 Label the diagram below.',
     questionType: 'DIAGRAM_LABEL_COMPLETION',
+    questions: [],
     evidence: [{ documentId: 'doc-1', pageNumber: 3, method: 'PDF_TEXT' }],
   };
 }
