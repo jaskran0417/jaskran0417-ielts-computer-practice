@@ -1,20 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AttemptRepository } from '../storage/attempt-repository';
 import { ExamProvider } from '../features/exam/ExamProvider';
 import type { ImportFileProcessor } from '../features/importer/ImportWorkspace';
 import { ImportWorkspaceContainer } from '../features/importer/ImportWorkspaceContainer';
 import { createLocalImportProcessor } from '../features/importer/local-file-processor';
 import { ReadingExam } from '../features/reading/ReadingExam';
+import { SessionResult } from '../features/results/SessionResult';
 import { SessionBuilder } from '../features/sessions/SessionBuilder';
 import { IndexedDbSessionRepository } from '../session/indexeddb-session-repository';
-import { isSupabaseConfigured, supabase } from '../database/supabase';
-import type { SessionRepository } from '../session/session-repository';
-import type { SessionConfig, SessionModule } from '../session/types';
-import { IndexedDbTestCatalog } from '../test-catalog/indexeddb-test-catalog';
+import type { ExamAttemptState } from '../exam-engine/types';
 import {
-  createSupabaseCatalogSource,
-  SupabaseTestCatalog,
-} from '../test-catalog/supabase-test-catalog';
+  IndexedDbProtectedAnswerRepository,
+  type ProtectedAnswerRepository,
+} from '../scoring/indexeddb-protected-answer-repository';
+import { scoreObjectiveAttempt } from '../scoring/score-objective-attempt';
+import type { SessionRepository } from '../session/session-repository';
+import type {
+  SessionConfig,
+  SessionModule,
+  SessionResultSummary,
+} from '../session/types';
+import { IndexedDbTestCatalog } from '../test-catalog/indexeddb-test-catalog';
+import { LocalImportedTestPublisher } from '../test-catalog/local-imported-test-publisher';
 import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
 import type { StudentTestPackage } from '../test-schema/types';
 import { AppShell, type AppShellNavItem } from './AppShell';
@@ -24,6 +31,7 @@ interface AppProps {
   sessionRepository?: SessionRepository;
   importProcessor?: ImportFileProcessor;
   testCatalog?: TestCatalogRepository;
+  protectedAnswerRepository?: ProtectedAnswerRepository;
   nowMs?: number;
 }
 
@@ -45,46 +53,48 @@ export default function App({
   sessionRepository,
   importProcessor,
   testCatalog,
+  protectedAnswerRepository,
   nowMs,
 }: AppProps) {
   const defaultSessionRepository = useMemo(() => new IndexedDbSessionRepository(), []);
   const defaultImportProcessor = useMemo(() => createLocalImportProcessor(), []);
-  const defaultTestCatalog = useMemo<TestCatalogRepository>(() => {
-    if (isSupabaseConfigured && supabase) {
-      return new SupabaseTestCatalog(createSupabaseCatalogSource(supabase));
-    }
-    return new IndexedDbTestCatalog();
-  }, []);
+  const defaultTestCatalog = useMemo<TestCatalogRepository>(
+    () => new IndexedDbTestCatalog(),
+    [],
+  );
+  const defaultProtectedAnswers = useMemo(
+    () => new IndexedDbProtectedAnswerRepository(),
+    [],
+  );
   const sessions = sessionRepository ?? defaultSessionRepository;
   const catalog = testCatalog ?? defaultTestCatalog;
+  const protectedAnswers = protectedAnswerRepository ?? defaultProtectedAnswers;
+  const localPublisher = useMemo(
+    () => new LocalImportedTestPublisher(catalog, protectedAnswers),
+    [catalog, protectedAnswers],
+  );
   const [session, setSession] = useState<SessionConfig | null>(null);
   const [activeTest, setActiveTest] = useState<StudentTestPackage | null>(null);
   const [publishedTests, setPublishedTests] = useState<TestSummary[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [sessionResult, setSessionResult] = useState<SessionResultSummary | null>(null);
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('sessions');
 
-  useEffect(() => {
-    let cancelled = false;
-    void catalog
-      .listPublishedTests()
-      .then((tests) => {
-        if (!cancelled) {
-          setPublishedTests(tests);
-          setCatalogError(null);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) {
-          setCatalogError(
-            cause instanceof Error ? cause.message : 'Unable to load published tests',
-          );
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+  const refreshPublishedTests = useCallback(async () => {
+    try {
+      const tests = await catalog.listPublishedTests();
+      setPublishedTests(tests);
+      setCatalogError(null);
+    } catch (cause) {
+      setCatalogError(
+        cause instanceof Error ? cause.message : 'Unable to load published tests',
+      );
+    }
   }, [catalog]);
+
+  useEffect(() => {
+    void refreshPublishedTests();
+  }, [refreshPublishedTests]);
 
   async function createSession(config: SessionConfig) {
     try {
@@ -106,6 +116,38 @@ export default function App({
     }
   }
 
+  async function scoreSubmittedReading(attempt: ExamAttemptState) {
+    try {
+      const definitions = await protectedAnswers.load(attempt.testVersionId);
+      if (!definitions) {
+        throw new Error('Protected answers for this local test are unavailable');
+      }
+
+      const score = scoreObjectiveAttempt({
+        responses: attempt.answers,
+        definitions,
+      });
+
+      setSessionResult({
+        selectedModules: session?.modules ?? ['READING'],
+        modules: [
+          {
+            module: 'READING',
+            rawScore: score.rawScore,
+            totalQuestions: score.totalQuestions,
+          },
+        ],
+        overallBand: null,
+        overallStatus: 'COMPLETE',
+      });
+      setCatalogError(null);
+    } catch (cause) {
+      setCatalogError(
+        cause instanceof Error ? cause.message : 'Unable to score this Reading attempt',
+      );
+    }
+  }
+
   function navigateWorkspace(sectionId: string) {
     if (sectionId === 'sessions' || sectionId === 'import') {
       setActiveSection(sectionId);
@@ -120,7 +162,14 @@ export default function App({
         onNavigate={navigateWorkspace}
       >
         {activeSection === 'import' ? (
-          <ImportWorkspaceContainer processFile={importProcessor ?? defaultImportProcessor} />
+          <ImportWorkspaceContainer
+            processFile={importProcessor ?? defaultImportProcessor}
+            publisher={localPublisher}
+            onPublished={async () => {
+              await refreshPublishedTests();
+              setActiveSection('sessions');
+            }}
+          />
         ) : (
           <>
             {catalogError ? (
@@ -135,6 +184,14 @@ export default function App({
             />
           </>
         )}
+      </AppShell>
+    );
+  }
+
+  if (sessionResult) {
+    return (
+      <AppShell>
+        <SessionResult summary={sessionResult} />
       </AppShell>
     );
   }
@@ -185,7 +242,7 @@ export default function App({
 
   return (
     <ExamProvider test={activeTest} repository={repository} nowMs={nowMs}>
-      <ReadingExam test={activeTest} />
+      <ReadingExam test={activeTest} onSubmit={scoreSubmittedReading} />
     </ExamProvider>
   );
 }
