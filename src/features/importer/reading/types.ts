@@ -75,7 +75,7 @@ export interface VisualAnchorDraft {
 
 export interface StructureReviewItem {
   id: string;
-  kind: 'DOCUMENT_STRUCTURE' | 'QUESTION_TYPE' | 'QUESTION_TEXT' | 'VISUAL_ANCHOR';
+  kind: 'DOCUMENT_STRUCTURE' | 'QUESTION_TYPE' | 'QUESTION_TEXT' | 'OPTION_LIST' | 'VISUAL_ANCHOR';
   questionNumber?: number;
   message: string;
   evidence: SourceEvidence[];
@@ -89,6 +89,8 @@ export interface ReadingQuestionDraft {
   instructionConstraints: InstructionConstraints;
   evidence: SourceEvidence[];
   visualRegionId?: string;
+  options?: Array<{ id: string; label: string }>;
+  allowOptionReuse?: boolean;
 }
 
 export interface ReadingQuestionGroupDraft {
