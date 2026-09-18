@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createAttempt } from '../../exam-engine/create-attempt';
 import type { ExamAttemptState } from '../../exam-engine/types';
 import type { AttemptRepository } from '../../storage/attempt-repository';
 import { sampleReadingTest } from '../../test-schema/sample-reading';
@@ -8,11 +9,11 @@ import { ExamProvider } from '../exam/ExamProvider';
 import { ReadingExam } from './ReadingExam';
 
 class EmptyAttemptRepository implements AttemptRepository {
-  async loadAttempt() {
+  async loadAttempt(): Promise<ExamAttemptState | null> {
     return null;
   }
 
-  async loadActiveAttempt() {
+  async loadActiveAttempt(): Promise<ExamAttemptState | null> {
     return null;
   }
 
