@@ -1,6 +1,6 @@
 import type { ImportFileProcessor } from './ImportWorkspace';
 import { parseAnswerKey, type AnswerKeyParseResult } from './answer-key/parse-answer-key';
-import type { VerificationResult } from './domain';
+import type { NormalizedRect, VerificationResult } from './domain';
 import type {
   ImportDraft,
   ImportFieldRecord,
@@ -70,10 +70,6 @@ async function readArrayBuffer(file: File): Promise<ArrayBuffer> {
   return new Response(file).arrayBuffer();
 }
 
-async function readText(file: File): Promise<string> {
-  return new TextDecoder().decode(await readArrayBuffer(file));
-}
-
 function sourceRecord(
   file: File,
   id: string,
@@ -101,6 +97,23 @@ function normalizedPdfText(page: ExtractedPdfPage): string {
     .trim();
 }
 
+function pdfTextRegion(page: ExtractedPdfPage): NormalizedRect | undefined {
+  const items = page.items.filter((item) => item.text.trim().length > 0);
+  if (items.length === 0) return undefined;
+
+  const left = Math.min(...items.map((item) => item.rect.x));
+  const top = Math.min(...items.map((item) => item.rect.y));
+  const right = Math.max(...items.map((item) => item.rect.x + item.rect.width));
+  const bottom = Math.max(...items.map((item) => item.rect.y + item.rect.height));
+
+  return {
+    x: left,
+    y: top,
+    width: Math.max(0, right - left),
+    height: Math.max(0, bottom - top),
+  };
+}
+
 function pdfPageVerification(
   page: ExtractedPdfPage,
   documentId: string,
@@ -112,6 +125,7 @@ function pdfPageVerification(
     evidence: {
       documentId,
       pageNumber: page.pageNumber,
+      region: pdfTextRegion(page),
       method: 'PDF_TEXT' as const,
     },
   };
