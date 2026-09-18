@@ -79,6 +79,7 @@ function sourceRecord(
   id: string,
   kind: SourceDocumentKind,
   createdAtMs: number,
+  sourceBytes: ArrayBuffer,
 ): SourceDocumentRecord {
   return {
     id,
@@ -87,7 +88,7 @@ function sourceRecord(
     sizeBytes: file.size,
     kind,
     createdAtMs,
-    sourceBlob: file.slice(0, file.size, file.type || 'application/octet-stream'),
+    sourceBytes,
   };
 }
 
@@ -311,12 +312,13 @@ export function createLocalImportProcessor(
     const draftId = createId();
     const testId = createId();
 
+    const originalSourceBytes = await readArrayBuffer(file);
     let kind: SourceDocumentKind;
     let fields: ImportFieldRecord[];
 
     if (isPdf(file)) {
       kind = 'PDF';
-      const pdfData = await readArrayBuffer(file);
+      const pdfData = originalSourceBytes;
       const pages = await pdfExtractor(pdfData.slice(0));
 
       if (pages.length === 0) {
@@ -364,7 +366,7 @@ export function createLocalImportProcessor(
       ];
     } else if (isAnswerKeyText(file)) {
       kind = 'ANSWER_KEY';
-      const text = normalizeAnswerKeySource(file, await readText(file));
+      const text = normalizeAnswerKeySource(file, new TextDecoder().decode(originalSourceBytes));
       const result = answerKeyExtractor(text);
 
       if (result.verification.length === 0) {
@@ -388,7 +390,7 @@ export function createLocalImportProcessor(
     return {
       id: draftId,
       testId,
-      sourceDocuments: [sourceRecord(file, sourceId, kind, createdAtMs)],
+      sourceDocuments: [sourceRecord(file, sourceId, kind, createdAtMs, originalSourceBytes.slice(0))],
       fields,
       updatedAtMs: createdAtMs,
     };
