@@ -48,6 +48,8 @@ describe('ExamProvider recovery', () => {
     });
 
     expect(screen.getByTestId('question-1-status')).toHaveAttribute('data-review', 'true');
-    expect(repository.saved[0]?.id).toBe(restored.id);
+    await waitFor(() => {
+      expect(repository.saved[0]?.id).toBe(restored.id);
+    });
   });
 });
