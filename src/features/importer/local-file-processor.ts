@@ -12,7 +12,9 @@ import { TesseractOcrEngine } from './ocr/tesseract-engine';
 import { runTwoPassOcr } from './ocr/two-pass-ocr';
 import {
   extractPdf as extractPdfDocument,
+  renderPdfPageImage,
   type ExtractedPdfPage,
+  type PdfPageRenderer,
 } from './pdf/pdf-adapter';
 
 type PdfExtractor = (data: ArrayBuffer) => Promise<ExtractedPdfPage[]>;
@@ -20,6 +22,7 @@ type AnswerKeyExtractor = (text: string) => AnswerKeyParseResult;
 
 export interface LocalImportProcessorOptions {
   extractPdf?: PdfExtractor;
+  renderPdfPage?: PdfPageRenderer;
   ocrEngine?: OcrEngine;
   parseAnswerKey?: AnswerKeyExtractor;
   createId?: () => string;
@@ -295,6 +298,7 @@ export function createLocalImportProcessor(
   options: LocalImportProcessorOptions = {},
 ): ImportFileProcessor {
   const pdfExtractor = options.extractPdf ?? extractPdfDocument;
+  const pdfPageRenderer = options.renderPdfPage ?? renderPdfPageImage;
   const answerKeyExtractor = options.parseAnswerKey ?? parseAnswerKey;
   const ocrEngine = options.ocrEngine ?? new TesseractOcrEngine();
   const createId = options.createId ?? defaultCreateId;
@@ -311,18 +315,36 @@ export function createLocalImportProcessor(
 
     if (isPdf(file)) {
       kind = 'PDF';
-      const pages = await pdfExtractor(await readArrayBuffer(file));
+      const pdfData = await readArrayBuffer(file);
+      const pages = await pdfExtractor(pdfData.slice(0));
 
       if (pages.length === 0) {
         throw new Error('The PDF contains no readable pages');
       }
 
-      fields = pages.map((page) => ({
-        id: createId(),
-        kind: 'PASSAGE_TEXT',
-        critical: true,
-        verification: pdfPageVerification(page, sourceId),
-      }));
+      fields = [];
+
+      for (const page of pages) {
+        let verification: VerificationResult;
+
+        if (page.kind === 'LIKELY_SCAN') {
+          const renderedPage = await pdfPageRenderer(pdfData.slice(0), page.pageNumber);
+          verification = await runTwoPassOcr(renderedPage, ocrEngine, {
+            documentId: sourceId,
+            pageNumber: page.pageNumber,
+            region: { x: 0, y: 0, width: 1, height: 1 },
+          });
+        } else {
+          verification = pdfPageVerification(page, sourceId);
+        }
+
+        fields.push({
+          id: createId(),
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification,
+        });
+      }
     } else if (isImage(file)) {
       kind = 'IMAGE';
       const verification = await runTwoPassOcr(file, ocrEngine, {
