@@ -12,7 +12,7 @@ import type { SessionRepository } from '../session/session-repository';
 import type { SessionConfig, SessionModule } from '../session/types';
 import { IndexedDbTestCatalog } from '../test-catalog/indexeddb-test-catalog';
 import {
-  createSupabaseCatalogDataSource,
+  createSupabaseCatalogSource,
   SupabaseTestCatalog,
 } from '../test-catalog/supabase-test-catalog';
 import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
