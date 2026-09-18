@@ -97,6 +97,20 @@ export function buildReadingImportModel(input: {
     structuredDraft,
     answers: answerCoverage,
   });
+  for (const anchor of visualAnchors) {
+    if (anchor.verificationState !== 'CONFIRMED' || !anchor.anchor) continue;
+    const question = questions.find((candidate) => candidate.number === anchor.questionNumber);
+    semanticReviewItems.push({
+      id: `review-visual-anchor-${anchor.questionNumber}`,
+      kind: 'VISUAL_ANCHOR',
+      label: `Question ${anchor.questionNumber} visual anchor`,
+      critical: true,
+      value: 'Position confirmed',
+      evidence: question?.evidence ?? [],
+      state: 'CONFIRMED',
+      questionNumber: anchor.questionNumber,
+    });
+  }
   const sourceBlockingFieldIds = [...questionFields, ...answerFields]
     .filter((field) => !resolved(field))
     .map((field) => field.id);
