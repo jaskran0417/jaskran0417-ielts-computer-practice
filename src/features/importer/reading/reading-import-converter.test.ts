@@ -165,4 +165,84 @@ describe('buildReadingImportModel', () => {
     );
     expect(model.canPublish).toBe(false);
   });
+
+  it('blocks publication until a visual question answer anchor is reviewed', () => {
+    const bundle: ImportBundle = {
+      id: 'bundle-visual',
+      module: 'READING',
+      title: 'Visual Reading Test',
+      sourceDocuments: [
+        {
+          id: 'pdf-1',
+          name: 'reading.pdf',
+          mediaType: 'application/pdf',
+          sizeBytes: 100,
+          kind: 'PDF',
+          createdAtMs: 1,
+        },
+      ],
+      assignments: [
+        {
+          sourceDocumentId: 'pdf-1',
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 2 }],
+        },
+        {
+          sourceDocumentId: 'pdf-1',
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 3, endPage: 3 }],
+        },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 2,
+    };
+
+    const draft: ImportDraft = {
+      id: 'draft-visual',
+      testId: 'test-visual',
+      sourceDocuments: bundle.sourceDocuments,
+      fields: [
+        field(
+          'page-1',
+          1,
+          ['Passage 1', 'A Visual Passage', 'The outer layer is the corona.'].join('\n'),
+        ),
+        field(
+          'page-2',
+          2,
+          [
+            'Questions 1-1',
+            'Label the diagram below. Choose NO MORE THAN TWO WORDS from the passage.',
+            '1. Outer layer',
+          ].join('\n'),
+        ),
+        field('page-3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 2,
+    };
+
+    const model = buildReadingImportModel({
+      bundle,
+      draft,
+      visualRegions: [
+        {
+          id: 'diagram-page-2',
+          sourceDocumentId: 'pdf-1',
+          pageNumber: 2,
+          kind: 'DIAGRAM',
+          crop: { x: 0.1, y: 0.2, width: 0.8, height: 0.5 },
+        },
+      ],
+    });
+
+    expect(model.semanticReviewItems).toContainEqual(
+      expect.objectContaining({
+        kind: 'VISUAL_ANCHOR',
+        questionNumber: 1,
+        state: 'REVIEW_REQUIRED',
+      }),
+    );
+    expect(model.canPublish).toBe(false);
+  });
+
 });
