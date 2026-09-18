@@ -1,11 +1,19 @@
 export type ModuleKind = 'READING' | 'LISTENING' | 'WRITING';
 
+export interface MediaAsset {
+  id: string;
+  url: string;
+  alt: string;
+  kind: 'IMAGE' | 'AUDIO' | 'OTHER';
+}
+
 export interface StudentTestPackage {
   id: string;
   versionId: string;
   title: string;
   durationSeconds: number;
   modules: ReadingModule[];
+  assets?: MediaAsset[];
 }
 
 export interface ReadingModule {
@@ -113,6 +121,8 @@ export interface TableCompletionQuestion extends QuestionBase {
   type: 'TABLE_COMPLETION';
   tableId: string;
   cellId: string;
+  assetId: string;
+  anchor: NormalizedQuestionRect;
   placeholder?: string;
 }
 
