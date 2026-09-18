@@ -797,6 +797,131 @@ select:focus-visible,
   font-size: 22px;
 }
 
+.passage-tools {
+  margin-top: 14px;
+  font-family: var(--font-sans);
+}
+
+.passage-tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.passage-tool-button,
+.passage-note-delete {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #9aa5b1;
+  border-radius: 4px;
+  color: #334e68;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.passage-tool-button:hover:not(:disabled),
+.passage-note-delete:hover:not(:disabled) {
+  background: #f0f4f8;
+}
+
+.passage-tool-button:disabled,
+.passage-note-delete:disabled {
+  color: #9aa5b1;
+  background: #f5f7fa;
+}
+
+.passage-selection-preview {
+  margin: 8px 0 0;
+  color: #52606d;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.passage-note-composer,
+.passage-notes-panel {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #d9e2ec;
+  border-radius: 5px;
+  background: #f8fafc;
+}
+
+.passage-note-composer > p {
+  margin: 0 0 8px;
+  color: #52606d;
+  font-size: 11px;
+}
+
+.passage-note-composer label {
+  display: grid;
+  gap: 5px;
+  color: #334e68;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.passage-note-composer textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid #9aa5b1;
+  border-radius: 4px;
+  color: #243b53;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.passage-note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.passage-note-actions .primary-action {
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.passage-notes-panel ul {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.passage-notes-panel li {
+  padding: 9px;
+  border: 1px solid #e4e7eb;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.passage-notes-panel blockquote {
+  margin: 0 0 6px;
+  color: #616e7c;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.passage-notes-panel li > p {
+  margin: 0 0 7px;
+  color: #243b53;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.passage-notes-empty {
+  margin: 0;
+  color: #7b8794;
+  font-size: 11px;
+}
+
 .passage-copy {
   max-width: 760px;
   padding: 24px 34px 48px;
@@ -807,6 +932,20 @@ select:focus-visible,
 
 .passage-copy p {
   margin: 0 0 1.25em;
+}
+
+.passage-highlight {
+  border-radius: 2px;
+  background: #fff0a8;
+  box-shadow: inset 0 -1px 0 #d5b942;
+}
+
+.passage-highlight[role="button"] {
+  cursor: pointer;
+}
+
+.passage-highlight[role="button"]:hover {
+  background: #ffe680;
 }
 
 .questions-pane {
