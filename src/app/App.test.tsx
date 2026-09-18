@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { ExamAttemptState } from '../exam-engine/types';
+import type { ProtectedAnswerRepository, ProtectedAnswerSet } from '../scoring/indexeddb-protected-answer-repository';
 import type { AttemptRepository } from '../storage/attempt-repository';
 import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
 import type { StudentTestPackage } from '../test-schema/types';
@@ -193,4 +194,53 @@ describe('App session flow', () => {
     expect(screen.queryByRole('heading', { name: 'Reading' })).not.toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
   });
+
+  it('scores a submitted local Reading test from protected local answers and shows the result', async () => {
+    const user = userEvent.setup();
+    const protectedAnswers: ProtectedAnswerSet = {
+      'q-imported-1': {
+        questionNumber: 1,
+        canonical: ['A'],
+        alternatives: [],
+        normalization: {
+          caseSensitive: false,
+          collapseWhitespace: true,
+          punctuation: 'STRICT',
+        },
+        sourceEvidence: [],
+        verificationState: 'VERIFIED',
+      },
+    };
+    const answerRepository: ProtectedAnswerRepository = {
+      async save() {},
+      async load(versionId) {
+        return versionId === 'version-imported-1' ? protectedAnswers : null;
+      },
+    };
+
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        protectedAnswerRepository={answerRepository}
+        nowMs={1_000}
+      />,
+    );
+
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
+    await user.click(screen.getByRole('button', { name: 'Create session' }));
+
+    const choices = await screen.findAllByRole('radio');
+    await user.click(choices[0]!);
+    await user.click(screen.getByRole('button', { name: 'Submit test' }));
+
+    expect(await screen.findByRole('heading', { name: 'Session result' })).toBeInTheDocument();
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+  });
+
 });
