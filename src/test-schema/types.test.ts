@@ -57,6 +57,8 @@ describe('Reading question schema', () => {
       prompt: 'Complete the cell',
       tableId: 'table-1',
       cellId: 'cell-28',
+      assetId: 'table-asset-1',
+      anchor: { x: 0.1, y: 0.2, width: 0.2, height: 0.08 },
       instructionConstraints: { maxWords: 2, numbersAllowed: true },
     };
 
