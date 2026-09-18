@@ -1,7 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { TestSummary } from '../../test-catalog/test-catalog-repository';
 import { SessionBuilder } from './SessionBuilder';
+
+const publishedTests: TestSummary[] = [
+  {
+    testId: 'test-imported',
+    versionId: 'version-imported-1',
+    title: 'Imported Reading Test',
+    modules: ['READING'],
+  },
+  {
+    testId: 'test-second',
+    versionId: 'version-second-1',
+    title: 'Second Reading Test',
+    modules: ['READING'],
+  },
+];
 
 describe('SessionBuilder', () => {
   it('blocks creation until at least one module is selected', () => {
@@ -15,6 +31,34 @@ describe('SessionBuilder', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Create session' })).toBeDisabled();
+  });
+
+  it('creates a session for the explicitly selected published test version', async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    render(
+      <SessionBuilder
+        tests={publishedTests}
+        nowMs={900}
+        onCreate={onCreate}
+      />,
+    );
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-second-1',
+    );
+    await user.click(screen.getByRole('checkbox', { name: /Reading/i }));
+    await user.click(screen.getByRole('button', { name: 'Create session' }));
+
+    expect(onCreate).toHaveBeenCalledWith({
+      id: 'session-900',
+      testId: 'test-second',
+      testVersionId: 'version-second-1',
+      modules: ['READING'],
+      mode: 'PRACTICE',
+      createdAtMs: 900,
+    });
   });
 
   it('creates a Reading Practice session', async () => {
