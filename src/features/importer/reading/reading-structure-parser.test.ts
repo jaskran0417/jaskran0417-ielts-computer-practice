@@ -44,7 +44,29 @@ describe('parseReadingStructure', () => {
       [32, 36],
       [37, 40],
     ]);
-    expect(result.reviewItems).toEqual([]);
+    expect(
+      result.sections.flatMap((section) =>
+        section.questionGroups.map((group) => group.questionType),
+      ),
+    ).toEqual([
+      'DIAGRAM_LABEL_COMPLETION',
+      'SENTENCE_COMPLETION',
+      null,
+      'SENTENCE_COMPLETION',
+      null,
+      'SINGLE_CHOICE',
+      'TABLE_COMPLETION',
+      'MATCHING_INFORMATION',
+      null,
+    ]);
+    expect(result.reviewItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          critical: true,
+          reason: expect.stringContaining('Question type'),
+        }),
+      ]),
+    );
   });
 
   it('creates a critical review item when question numbering has a gap', () => {
