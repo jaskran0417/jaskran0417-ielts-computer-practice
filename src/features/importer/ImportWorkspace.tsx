@@ -433,7 +433,7 @@ export function ImportWorkspace({
                           questionNumber={item.questionNumber}
                           imageUrl={visualAsset.dataUrl}
                           initialAnchor={
-                            bundle.visualAnchorConfirmations?.[`q-${item.questionNumber}`]
+                            bundle?.visualAnchorConfirmations?.[`q-${item.questionNumber}`]
                           }
                           onConfirm={(anchor) =>
                             confirmVisualAnchor(item.questionNumber!, anchor)
