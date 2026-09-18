@@ -66,4 +66,32 @@ describe('parseReadingDocumentOutline', () => {
 
     expect(outline.issues).toContain('Question ranges overlap: 1-4 and 4-8');
   });
+  it('splits multiple question ranges on the same PDF page into independent blocks', () => {
+    const outline = parseReadingDocumentOutline([
+      {
+        pageNumber: 4,
+        text: [
+          'Questions 5-9',
+          'Complete each sentence with the correct ending A-I.',
+          '5. First ending question',
+          '9. Last ending question',
+          'Questions 10-14',
+          'Do the following statements agree with the information?',
+          'True',
+          'False',
+          'Not Given',
+          '10. First TFNG statement',
+          '14. Last TFNG statement',
+        ].join('\n'),
+        evidence: [],
+      },
+    ]);
+
+    expect(outline.questionRanges).toHaveLength(2);
+    expect(outline.questionRanges[0]?.instructionText).toContain('correct ending A-I');
+    expect(outline.questionRanges[0]?.instructionText).not.toContain('True\nFalse\nNot Given');
+    expect(outline.questionRanges[1]?.instructionText).toContain('True\nFalse\nNot Given');
+    expect(outline.questionRanges[1]?.instructionText).not.toContain('correct ending A-I');
+  });
+
 });
