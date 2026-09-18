@@ -50,7 +50,7 @@ describe('App session flow', () => {
       new File(['1 library\n2 B\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
     );
 
-    expect(await screen.findByText('answers.txt')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'answers.txt' })).toBeInTheDocument();
     expect(screen.getAllByText('VERIFIED')).toHaveLength(3);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
