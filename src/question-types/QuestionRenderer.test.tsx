@@ -49,21 +49,25 @@ describe('QuestionRenderer', () => {
   });
 
   it('renders multiple-select choices and returns the selected ids', async () => {
-    const onChange = renderQuestion({
-      id: 'q-12',
-      number: 12,
-      type: 'MULTI_SELECT',
-      prompt: 'Choose two answers.',
-      options: [
-        { id: 'A', label: 'Alpha' },
-        { id: 'B', label: 'Beta' },
-        { id: 'C', label: 'Gamma' },
-      ],
-      minSelections: 2,
-      maxSelections: 2,
-    });
+    const onChange = renderQuestion(
+      {
+        id: 'q-12',
+        number: 12,
+        type: 'MULTI_SELECT',
+        prompt: 'Choose two answers.',
+        options: [
+          { id: 'A', label: 'Alpha' },
+          { id: 'B', label: 'Beta' },
+          { id: 'C', label: 'Gamma' },
+        ],
+        minSelections: 2,
+        maxSelections: 2,
+      },
+      vi.fn(),
+      ['A'],
+    );
 
-    await userEvent.click(screen.getByRole('checkbox', { name: /Alpha/ }));
+    expect(screen.getByRole('checkbox', { name: /Alpha/ })).toBeChecked();
     await userEvent.click(screen.getByRole('checkbox', { name: /Beta/ }));
     expect(onChange).toHaveBeenLastCalledWith(['A', 'B']);
   });
