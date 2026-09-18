@@ -94,8 +94,9 @@ describe('ImportWorkspace', () => {
     const user = userEvent.setup();
     render(<ImportWorkspace processFile={async () => importedDraft} />);
 
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
     const file = new File(['pdf'], 'practice-test.pdf', { type: 'application/pdf' });
-    await user.upload(screen.getByLabelText('Choose source file'), file);
+    await user.upload(screen.getByLabelText('Add source files'), file);
 
     expect(await screen.findByText('practice-test.pdf')).toBeInTheDocument();
     expect(screen.getByText('VERIFIED')).toBeInTheDocument();
@@ -116,8 +117,9 @@ describe('ImportWorkspace', () => {
     const user = userEvent.setup();
     render(<ImportWorkspace processFile={async () => importedDraft} />);
 
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
     await user.upload(
-      screen.getByLabelText('Choose source file'),
+      screen.getByLabelText('Add source files'),
       new File(['pdf'], 'practice-test.pdf', { type: 'application/pdf' }),
     );
     const reviewButton = await screen.findByRole('button', {
