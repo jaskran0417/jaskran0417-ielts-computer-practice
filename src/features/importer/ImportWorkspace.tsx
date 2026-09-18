@@ -32,6 +32,7 @@ export interface ImportWorkspaceProps {
   onDraftChange?(draft: ImportDraft): void;
   onBundleChange?(bundle: ImportBundle): void;
   onPublish?(publication: PreparedReadingPublication): void | Promise<void>;
+  onClearImport?(ids: { bundleId?: string; draftId?: string }): void | Promise<void>;
 }
 
 function createWorkspaceId(): string {
@@ -114,6 +115,7 @@ export function ImportWorkspace({
   onDraftChange,
   onBundleChange,
   onPublish,
+  onClearImport,
 }: ImportWorkspaceProps) {
   const [bundle, setBundle] = useState<ImportBundle | null>(initialBundle);
   const [draft, setDraft] = useState<ImportDraft | null>(initialDraft);
@@ -277,12 +279,24 @@ export function ImportWorkspace({
     onBundleChange?.(nextBundle);
   }
 
-  function clearImport() {
+  async function clearImport() {
+    const ids = {
+      ...(bundle?.id ? { bundleId: bundle.id } : {}),
+      ...(draft?.id ? { draftId: draft.id } : {}),
+    };
     setBundle(null);
     setDraft(null);
     setSelectedFieldId(null);
     setExpandedSemanticItemId(null);
     setError(null);
+
+    try {
+      await onClearImport?.(ids);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Unable to clear the saved import',
+      );
+    }
   }
 
   function assignRole(assignment: ImportSourceAssignment) {
@@ -420,7 +434,7 @@ export function ImportWorkspace({
         onAssign={assignRole}
         onRemoveSource={removeSource}
         onRemoveAssignment={removeAssignment}
-        onClearImport={clearImport}
+        onClearImport={() => void clearImport()}
       />
 
       {isImporting ? (
