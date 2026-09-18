@@ -66,6 +66,13 @@ function preferredFieldId(draft: ImportDraft | null | undefined): string | null 
   return preferred?.id ?? null;
 }
 
+function fieldBelongsToSource(field: ImportFieldRecord, sourceDocumentId: string): boolean {
+  return (
+    field.verification.passA?.evidence.documentId === sourceDocumentId ||
+    field.verification.passB?.evidence.documentId === sourceDocumentId
+  );
+}
+
 function fieldPreview(field: ImportFieldRecord): string {
   return (
     field.confirmedValue ??
@@ -244,7 +251,7 @@ export function ImportWorkspace({
       ? {
           ...draft,
           sourceDocuments: draft.sourceDocuments.filter((source) => source.id !== sourceDocumentId),
-          fields: draft.fields.filter((field) => field.sourceDocumentId !== sourceDocumentId),
+          fields: draft.fields.filter((field) => !fieldBelongsToSource(field, sourceDocumentId)),
           visualAssets: (draft.visualAssets ?? []).filter((asset) => asset.sourceDocumentId !== sourceDocumentId),
           updatedAtMs: nowMs,
         }
