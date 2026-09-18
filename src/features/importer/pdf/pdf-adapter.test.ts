@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { extractPdf, type PdfDocumentLoader } from './pdf-adapter';
+import {
+  bundledPdfWorkerUrl,
+  extractPdf,
+  type PdfDocumentLoader,
+} from './pdf-adapter';
 
 function createLoader(): PdfDocumentLoader {
   const textItems = Array.from({ length: 10 }, (_, index) => ({
@@ -40,6 +44,11 @@ function createLoader(): PdfDocumentLoader {
 }
 
 describe('extractPdf', () => {
+  it('uses a bundled same-origin PDF worker URL', () => {
+    expect(bundledPdfWorkerUrl).not.toMatch(/^https?:\/\//i);
+    expect(bundledPdfWorkerUrl).toMatch(/pdf\.worker/i);
+  });
+
   it('extracts text, normalized geometry, page signals, and classification', async () => {
     const pages = await extractPdf(new ArrayBuffer(8), createLoader());
 
