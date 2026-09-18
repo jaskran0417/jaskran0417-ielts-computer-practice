@@ -8,6 +8,8 @@ import type {
   ImportSourceAssignment,
 } from './bundle/domain';
 import { ConflictEditor } from './components/ConflictEditor';
+import { SemanticAnswerEditor } from './components/SemanticAnswerEditor';
+import { VisualAnchorEditor } from './components/VisualAnchorEditor';
 import { ImportSourceManager } from './components/ImportSourceManager';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
 import { VerificationBadge } from './components/VerificationBadge';
@@ -106,6 +108,7 @@ export function ImportWorkspace({
     preferredFieldId(initialDraft),
   );
   const [isImporting, setIsImporting] = useState(false);
+  const [expandedSemanticItemId, setExpandedSemanticItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const selectedField = useMemo(
@@ -236,6 +239,36 @@ export function ImportWorkspace({
     }
   }
 
+  function confirmSemanticAnswer(itemId: string, value: string) {
+    if (!bundle) return;
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      semanticConfirmations: {
+        ...(bundle.semanticConfirmations ?? {}),
+        [itemId]: value,
+      },
+      updatedAtMs: Date.now(),
+    };
+    setBundle(nextBundle);
+    setExpandedSemanticItemId(null);
+    onBundleChange?.(nextBundle);
+  }
+
+  function confirmVisualAnchor(questionNumber: number, anchor: { x: number; y: number; width: number; height: number }) {
+    if (!bundle) return;
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      visualAnchorConfirmations: {
+        ...(bundle.visualAnchorConfirmations ?? {}),
+        [`q-${questionNumber}`]: anchor,
+      },
+      updatedAtMs: Date.now(),
+    };
+    setBundle(nextBundle);
+    setExpandedSemanticItemId(null);
+    onBundleChange?.(nextBundle);
+  }
+
   function confirmField(value: string) {
     if (!draft || !selectedField) return;
 
@@ -338,18 +371,78 @@ export function ImportWorkspace({
               </div>
 
               <div className="import-fields">
-                {readingModel.semanticReviewItems.map((item) => (
-                  <article key={item.id} className="import-field-card">
-                    <div className="import-field-card-heading">
-                      <strong>{item.label}</strong>
-                      <VerificationBadge state={item.state} />
-                    </div>
-                    <p>{item.value ?? item.message ?? 'Review required'}</p>
-                    <div className="import-field-card-footer">
-                      <small>{item.critical ? 'Critical' : 'Non-critical'}</small>
-                    </div>
-                  </article>
-                ))}
+                {readingModel.semanticReviewItems.map((item) => {
+                  const visualAnchor = item.questionNumber
+                    ? readingModel.visualAnchors.find(
+                        (anchor) => anchor.questionNumber === item.questionNumber,
+                      )
+                    : undefined;
+                  const visualAsset = visualAnchor
+                    ? draft.visualAssets?.find(
+                        (asset) => asset.id === visualAnchor.visualRegionId,
+                      )
+                    : undefined;
+                  const expanded = expandedSemanticItemId === item.id;
+                  const requiresReview =
+                    item.critical &&
+                    item.state !== 'VERIFIED' &&
+                    item.state !== 'CONFIRMED';
+
+                  return (
+                    <article key={item.id} className="import-field-card">
+                      <div className="import-field-card-heading">
+                        <strong>{item.label}</strong>
+                        <VerificationBadge state={item.state} />
+                      </div>
+                      <p>{item.value ?? item.message ?? 'Review required'}</p>
+                      <div className="import-field-card-footer">
+                        <small>{item.critical ? 'Critical' : 'Non-critical'}</small>
+                        {requiresReview && item.kind === 'ANSWER_DEFINITION' ? (
+                          <button
+                            type="button"
+                            className="secondary-action"
+                            onClick={() => setExpandedSemanticItemId(expanded ? null : item.id)}
+                          >
+                            Review & Confirm {item.label}
+                          </button>
+                        ) : null}
+                        {requiresReview &&
+                        item.kind === 'VISUAL_ANCHOR' &&
+                        item.questionNumber &&
+                        visualAsset ? (
+                          <button
+                            type="button"
+                            className="secondary-action"
+                            onClick={() => setExpandedSemanticItemId(expanded ? null : item.id)}
+                          >
+                            Set position for Question {item.questionNumber}
+                          </button>
+                        ) : null}
+                      </div>
+                      {expanded && item.kind === 'ANSWER_DEFINITION' ? (
+                        <SemanticAnswerEditor
+                          initialValue={item.value ?? ''}
+                          onConfirm={(value) => confirmSemanticAnswer(item.id, value)}
+                        />
+                      ) : null}
+                      {expanded &&
+                      item.kind === 'VISUAL_ANCHOR' &&
+                      item.questionNumber &&
+                      visualAsset ? (
+                        <VisualAnchorEditor
+                          questionNumber={item.questionNumber}
+                          imageUrl={visualAsset.dataUrl}
+                          initialAnchor={
+                            bundle.visualAnchorConfirmations?.[`q-${item.questionNumber}`]
+                          }
+                          onConfirm={(anchor) =>
+                            confirmVisualAnchor(item.questionNumber!, anchor)
+                          }
+                        />
+                      ) : null}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ) : (
