@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
-import type { StudentQuestion, StudentTestPackage } from '../../test-schema/types';
-import { GapFillQuestion } from '../../question-types/GapFillQuestion';
-import { SingleChoiceQuestion } from '../../question-types/SingleChoiceQuestion';
+import type { StudentTestPackage } from '../../test-schema/types';
+import { renderStudentQuestion } from '../../question-types/question-renderer-registry';
 import { useExam } from '../exam/ExamProvider';
 import { QuestionNavigator } from './QuestionNavigator';
 
@@ -14,30 +13,6 @@ function formatTime(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function renderQuestion(
-  question: StudentQuestion,
-  value: string | string[] | undefined,
-  onChange: (value: string) => void,
-) {
-  if (question.type === 'SINGLE_CHOICE') {
-    return (
-      <SingleChoiceQuestion
-        question={question}
-        value={typeof value === 'string' ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
-
-  return (
-    <GapFillQuestion
-      question={question}
-      value={typeof value === 'string' ? value : undefined}
-      onChange={onChange}
-    />
-  );
 }
 
 export function ReadingExam({ test }: ReadingExamProps) {
@@ -126,8 +101,11 @@ export function ReadingExam({ test }: ReadingExamProps) {
               </button>
             </div>
             <p className="question-prompt">{activeQuestion.prompt}</p>
-            {renderQuestion(activeQuestion, state.answers[activeQuestion.id], (value) =>
-              dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value })
+            {renderStudentQuestion(
+              activeQuestion,
+              state.answers[activeQuestion.id],
+              (value) =>
+                dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value }),
             )}
           </div>
         </section>
