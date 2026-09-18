@@ -196,9 +196,18 @@ export function ImportWorkspace({
                         className="secondary-action"
                         onClick={() => setSelectedFieldId(field.id)}
                       >
-                        Review {field.kind}
+                        {field.critical && !isResolved(field)
+                          ? `Review & Confirm ${field.kind}`
+                          : `View evidence ${field.kind}`}
                       </button>
                     </div>
+                    {selectedFieldId === field.id && field.critical && !isResolved(field) ? (
+                      <ConflictEditor
+                        key={field.id}
+                        field={field}
+                        onConfirm={confirmField}
+                      />
+                    ) : null}
                   </article>
                 ))}
               </div>
@@ -209,9 +218,6 @@ export function ImportWorkspace({
                 field={selectedField}
                 sourceDocuments={draft.sourceDocuments}
               />
-              {selectedField && selectedField.critical && !isResolved(selectedField) ? (
-                <ConflictEditor key={selectedField.id} field={selectedField} onConfirm={confirmField} />
-              ) : null}
             </div>
           </div>
 
