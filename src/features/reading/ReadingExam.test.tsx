@@ -63,10 +63,27 @@ describe('Reading exam', () => {
     expect(screen.getByTestId('question-1-status')).toHaveAttribute('data-review', 'true');
 
     await user.click(screen.getByRole('button', { name: 'Question 2' }));
-    expect(screen.getByText('Question 2')).toBeInTheDocument();
+    expect(screen.getByTestId('question-panel-2')).toHaveAttribute('data-active', 'true');
 
     await user.click(screen.getByRole('button', { name: 'Question 1' }));
+    expect(screen.getByTestId('question-panel-1')).toHaveAttribute('data-active', 'true');
     expect(screen.getByRole('radio', { name: /British Museum/i })).toBeChecked();
+  });
+
+  it('offers a compact passage/questions switch for narrow screens', async () => {
+    const user = userEvent.setup();
+    const { container } = renderReading(new EmptyAttemptRepository());
+
+    const passageButton = screen.getByRole('button', { name: 'Passage' });
+    const questionsButton = screen.getByRole('button', { name: 'Questions' });
+    const workspace = container.querySelector('.reading-workspace');
+
+    expect(questionsButton).toHaveAttribute('aria-pressed', 'true');
+    expect(workspace).toHaveAttribute('data-mobile-pane', 'questions');
+
+    await user.click(passageButton);
+    expect(passageButton).toHaveAttribute('aria-pressed', 'true');
+    expect(workspace).toHaveAttribute('data-mobile-pane', 'passage');
   });
 
   it('turns a passage text selection into a removable highlight', async () => {
