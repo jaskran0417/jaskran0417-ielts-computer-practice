@@ -1955,14 +1955,11 @@ select:focus-visible,
     background: var(--color-accent-soft);
   }
 
-  .visual-mobile-answer input {
-    width: 100%;
+  .visual-mobile-answer-label {
     min-width: 0;
-    min-height: 34px;
-    padding: 5px 7px;
-    border: 1px solid #829ab1;
-    border-radius: 3px;
-    background: #ffffff;
+    color: #52606d;
+    font-size: 11px;
+    font-weight: 650;
   }
 
   .exam-footer {
