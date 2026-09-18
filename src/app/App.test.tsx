@@ -35,8 +35,8 @@ describe('App session flow', () => {
     await user.click(screen.getByRole('button', { name: /Import/i }));
 
     expect(await screen.findByRole('heading', { name: 'Create an import bundle' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Import/i })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('button', { name: /Sessions/i })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: /^Import/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: /^Sessions/ })).not.toHaveAttribute('aria-current');
   });
 
   it('uses the real local importer by default without Supabase configuration', async () => {
