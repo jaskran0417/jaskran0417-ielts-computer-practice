@@ -98,7 +98,7 @@ function parseRomanOptions(pageText: string): ReadingChoiceOptionDraft[] {
 
     if (!collecting) continue;
 
-    const option = line.match(/^([ivxlcdm]+)[.)]\s+(.+)$/i);
+    const option = line.match(/^([ivxlcdm]+)[.)]?\s+(.+)$/i);
     if (option) {
       options.push({
         id: (option[1] ?? '').toLowerCase(),
