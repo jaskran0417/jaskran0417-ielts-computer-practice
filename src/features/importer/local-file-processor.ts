@@ -485,6 +485,7 @@ export function createLocalRegionProcessor(
             : 'OTHER',
       critical: role === 'QUESTION_MATERIAL' || role === 'ANSWER_KEY',
       verification,
+      sourceRegion: region,
     };
 
     const visualAsset = visualKind
