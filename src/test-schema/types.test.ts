@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type {
   DiagramLabelQuestion,
+  ListeningModule,
   MatchingQuestion,
   StudentQuestion,
+  StudentTestPackage,
   TableCompletionQuestion,
   TextCompletionQuestion,
   TrueFalseNotGivenQuestion,
@@ -69,5 +71,59 @@ describe('Reading question schema', () => {
       'DIAGRAM_LABEL_COMPLETION',
       'TABLE_COMPLETION',
     ]);
+  });
+});
+
+
+describe('Listening module schema', () => {
+  it('represents four Listening parts with audio assets and questions 1-40', () => {
+    const parts = Array.from({ length: 4 }, (_, partIndex) => {
+      const start = partIndex * 10 + 1;
+      const questions: StudentQuestion[] = Array.from({ length: 10 }, (_, index) => ({
+        id: `lq-${start + index}`,
+        number: start + index,
+        type: 'SHORT_ANSWER' as const,
+        prompt: `Listening question ${start + index}`,
+      }));
+
+      return {
+        id: `listening-part-${partIndex + 1}`,
+        partNumber: partIndex + 1,
+        title: `Part ${partIndex + 1}`,
+        audioAssetId: `audio-part-${partIndex + 1}`,
+        questionGroups: [{
+          id: `listening-group-${partIndex + 1}`,
+          instruction: 'Answer the questions.',
+          questions,
+        }],
+      };
+    });
+
+    const listening: ListeningModule = {
+      id: 'listening-module',
+      kind: 'LISTENING',
+      title: 'Listening',
+      parts,
+    };
+
+    const test: StudentTestPackage = {
+      id: 'listening-test',
+      versionId: 'listening-version-1',
+      title: 'Listening Test',
+      durationSeconds: 30 * 60,
+      modules: [listening],
+      assets: parts.map((part) => ({
+        id: part.audioAssetId,
+        url: `/audio/${part.audioAssetId}.mp3`,
+        alt: `${part.title} recording`,
+        kind: 'AUDIO' as const,
+      })),
+    };
+
+    expect(test.modules[0].kind).toBe('LISTENING');
+    expect(listening.parts).toHaveLength(4);
+    expect(listening.parts.flatMap((part) =>
+      part.questionGroups.flatMap((group) => group.questions),
+    )).toHaveLength(40);
   });
 });
