@@ -3,11 +3,14 @@ import type { ReadingQuestionDraft } from '../reading/types';
 import type { ParsedAnswerEntry } from './types';
 import { mapAnswersToQuestions } from './question-answer-mapper';
 
-function question(number: number): ReadingQuestionDraft {
+function question(
+  number: number,
+  type: ReadingQuestionDraft['type'] = 'SHORT_ANSWER',
+): ReadingQuestionDraft {
   return {
     id: `q-${number}`,
     number,
-    type: 'SHORT_ANSWER',
+    type,
     prompt: `Question ${number}`,
     instructionConstraints: { maxWords: 2, numbersAllowed: true },
     evidence: [],
@@ -73,5 +76,26 @@ describe('mapAnswersToQuestions', () => {
 
     expect(result.unmappedAnswerNumbers).toEqual([41]);
     expect(result.blockingReasons).toContain('Answers do not map to questions: 41');
+  });
+  it('expands T F and NG only for True False Not Given questions', () => {
+    const tfng = mapAnswersToQuestions({
+      questions: [
+        question(10, 'TRUE_FALSE_NOT_GIVEN'),
+        question(11, 'TRUE_FALSE_NOT_GIVEN'),
+        question(12, 'TRUE_FALSE_NOT_GIVEN'),
+      ],
+      answerEntries: [answer(10, 'F'), answer(11, 'T'), answer(12, 'NG')],
+    });
+
+    expect(tfng.definitions['q-10']?.canonical).toEqual(['false']);
+    expect(tfng.definitions['q-11']?.canonical).toEqual(['true']);
+    expect(tfng.definitions['q-12']?.canonical).toEqual(['not_given']);
+
+    const matching = mapAnswersToQuestions({
+      questions: [question(36, 'MATCHING_INFORMATION')],
+      answerEntries: [answer(36, 'F')],
+    });
+
+    expect(matching.definitions['q-36']?.canonical).toEqual(['f']);
   });
 });
