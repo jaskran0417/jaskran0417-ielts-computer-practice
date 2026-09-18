@@ -12,6 +12,7 @@ export function questionIds(test: StudentTestPackage): string[] {
 
 export function createAttempt(test: StudentTestPackage, nowMs: number): ExamAttemptState {
   const ids = questionIds(test);
+  const hasListening = test.modules.some((module) => module.kind === 'LISTENING');
   const firstQuestionId = ids[0];
   if (!firstQuestionId) {
     throw new Error('Cannot start a test with no questions');
@@ -30,5 +31,16 @@ export function createAttempt(test: StudentTestPackage, nowMs: number): ExamAtte
     visitedQuestionIds: [firstQuestionId],
     highlights: [],
     notes: [],
+    ...(hasListening
+      ? {
+          listeningPlayback: {
+            partIndex: 0,
+            audioPositionSeconds: 0,
+            started: false,
+            ended: false,
+            pauses: [],
+          },
+        }
+      : {}),
   };
 }
