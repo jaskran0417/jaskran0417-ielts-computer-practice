@@ -6,13 +6,21 @@ export function preferredImportFieldEvidence(field: ImportFieldRecord) {
   return field.verification.passA?.evidence ?? field.verification.passB?.evidence;
 }
 
+function normalizeImportedSemanticText(value: string): string {
+  return value
+    .replace(/[ \t]*\u00A0[ \t]*/g, ' ')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+}
+
 export function preferredImportFieldText(field: ImportFieldRecord): string | null {
   const value =
     field.confirmedValue ??
     field.verification.normalizedValue ??
     field.verification.passA?.value ??
     field.verification.passB?.value;
-  return value?.trim() ? value.trim() : null;
+  const normalized = value ? normalizeImportedSemanticText(value).trim() : '';
+  return normalized || null;
 }
 
 function inRanges(pageNumber: number, ranges?: PageRange[]): boolean {
