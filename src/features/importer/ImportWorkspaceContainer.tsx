@@ -126,6 +126,22 @@ export function ImportWorkspaceContainer({
       });
   }
 
+
+  async function clearSavedSources(draftId?: string) {
+    if (!draftId) return;
+    setStorageError(null);
+    setStorageStatus('Clearing imported sources…');
+
+    try {
+      await imports.deleteDraft(draftId);
+      setStorageStatus('Sources cleared');
+    } catch (cause) {
+      setStorageStatus(null);
+      setStorageError(errorMessage(cause));
+      throw cause;
+    }
+  }
+
   async function clearSavedImport(ids: { bundleId?: string; draftId?: string }) {
     setStorageError(null);
     setStorageStatus('Clearing local import…');
@@ -190,6 +206,7 @@ export function ImportWorkspaceContainer({
         onBundleChange={persistBundle}
         onPublish={publishTest}
         onClearImport={clearSavedImport}
+        onClearSources={clearSavedSources}
       />
     </>
   );

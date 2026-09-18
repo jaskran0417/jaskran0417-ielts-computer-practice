@@ -33,6 +33,7 @@ export interface ImportWorkspaceProps {
   onBundleChange?(bundle: ImportBundle): void;
   onPublish?(publication: PreparedReadingPublication): void | Promise<void>;
   onClearImport?(ids: { bundleId?: string; draftId?: string }): void | Promise<void>;
+  onClearSources?(draftId?: string): void | Promise<void>;
 }
 
 function createWorkspaceId(): string {
@@ -116,6 +117,7 @@ export function ImportWorkspace({
   onBundleChange,
   onPublish,
   onClearImport,
+  onClearSources,
 }: ImportWorkspaceProps) {
   const [bundle, setBundle] = useState<ImportBundle | null>(initialBundle);
   const [draft, setDraft] = useState<ImportDraft | null>(initialDraft);
@@ -325,6 +327,43 @@ export function ImportWorkspace({
     onBundleChange?.(nextBundle);
   }
 
+
+  async function clearSources() {
+    if (!bundle || bundle.sourceDocuments.length === 0) return;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Clear all imported source files and assignments for this test?')
+    ) {
+      return;
+    }
+
+    const draftId = draft?.id;
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      sourceDocuments: [],
+      assignments: [],
+      semanticConfirmations: {},
+      visualAnchorConfirmations: {},
+      status: 'COLLECTING_SOURCES',
+      updatedAtMs: Date.now(),
+    };
+
+    setBundle(nextBundle);
+    setDraft(null);
+    setSelectedFieldId(null);
+    setExpandedSemanticItemId(null);
+    setError(null);
+    onBundleChange?.(nextBundle);
+
+    try {
+      await onClearSources?.(draftId);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Unable to clear imported sources',
+      );
+    }
+  }
+
   async function clearImport() {
     const ids = {
       ...(bundle?.id ? { bundleId: bundle.id } : {}),
@@ -494,6 +533,7 @@ export function ImportWorkspace({
         onRemoveSource={removeSource}
         onRemoveAssignment={removeAssignment}
         onClearImport={() => void clearImport()}
+        onClearSources={() => void clearSources()}
         onScoringModeChange={changeScoringMode}
       />
 
