@@ -531,4 +531,86 @@ describe('ImportWorkspace', () => {
 
     expect(cardUi.queryByText('REVIEW_REQUIRED')).not.toBeInTheDocument();
   });
+
+  it('prepares a student-safe runnable Reading publication when Publish is pressed', async () => {
+    const user = userEvent.setup();
+    const source = {
+      id: 'publish-source',
+      name: 'publish.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'publish-bundle',
+      module: 'READING',
+      title: 'Published Reading',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verified = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: { documentId: source.id, pageNumber, method: 'PDF_TEXT' as const },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'publish-draft',
+      testId: 'publish-test',
+      sourceDocuments: [source],
+      fields: [
+        verified('pub1', 1, ['Passage 1', 'A Passage', 'The outer layer is the corona.'].join('\n')),
+        verified('pub2', 2, [
+          'Questions 1-1',
+          'Answer the questions using NO MORE THAN TWO WORDS.',
+          '1. What is the outer layer called?',
+        ].join('\n')),
+        verified('pub3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+    const publications: unknown[] = [];
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+        onPublish={(publication) => {
+          publications.push(publication);
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Publish imported test' }));
+
+    expect(publications).toHaveLength(1);
+    const publication = publications[0] as {
+      studentPackage: { title: string; modules: Array<{ sections: Array<{ questionGroups: Array<{ questions: Array<{ number: number; type: string }> }> }> }> };
+      protectedAnswers: Record<string, { canonical: string[] }>;
+    };
+    expect(publication.studentPackage.title).toBe('Published Reading');
+    expect(publication.studentPackage.modules[0]?.sections[0]?.questionGroups[0]?.questions[0]).toMatchObject({
+      number: 1,
+      type: 'SHORT_ANSWER',
+    });
+    expect(publication.protectedAnswers['q-1']?.canonical).toEqual(['corona']);
+    expect(JSON.stringify(publication.studentPackage)).not.toContain('canonical');
+  });
+
 });
