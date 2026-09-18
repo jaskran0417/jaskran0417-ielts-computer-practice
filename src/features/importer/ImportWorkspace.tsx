@@ -12,6 +12,7 @@ import { ImportSourceManager } from './components/ImportSourceManager';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
 import { VerificationBadge } from './components/VerificationBadge';
 import type { ImportDraft, ImportFieldRecord } from './local/import-repository';
+import { buildReadingImportModel } from './reading/reading-import-converter';
 import './import-workspace.css';
 
 export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
@@ -110,6 +111,40 @@ export function ImportWorkspace({
 
   const unresolvedCriticalCount =
     draft?.fields.filter((field) => !isResolved(field)).length ?? 0;
+
+  const readingModel = useMemo(() => {
+    if (!bundle || !draft || bundle.module !== 'READING') return null;
+
+    const hasQuestionMaterial = bundle.assignments.some(
+      (assignment) => assignment.role === 'QUESTION_MATERIAL',
+    );
+    const hasAnswerKey = bundle.assignments.some(
+      (assignment) => assignment.role === 'ANSWER_KEY',
+    );
+
+    if (!hasQuestionMaterial || !hasAnswerKey) return null;
+
+    return buildReadingImportModel({
+      bundle,
+      draft,
+      visualRegions: [],
+    });
+  }, [bundle, draft]);
+
+  const showStructuredReadingReview =
+    readingModel !== null && unresolvedCriticalCount === 0;
+  const semanticBlockingCount =
+    showStructuredReadingReview
+      ? readingModel.semanticReviewItems.filter(
+          (item) =>
+            item.critical &&
+            item.state !== 'VERIFIED' &&
+            item.state !== 'CONFIRMED',
+        ).length
+      : 0;
+  const activeBlockingCount = showStructuredReadingReview
+    ? semanticBlockingCount
+    : unresolvedCriticalCount;
 
   function createBundle(module: ImportModule, title: string) {
     const nowMs = Date.now();
@@ -276,71 +311,102 @@ export function ImportWorkspace({
             </div>
           </div>
 
-          <div className="import-review-layout">
-            <section className="import-field-list" aria-labelledby="import-fields-title">
+          {showStructuredReadingReview ? (
+            <section
+              className="import-field-list"
+              aria-labelledby="structured-reading-review-title"
+            >
               <div className="import-panel-heading">
                 <div>
-                  <p className="page-eyebrow">Extracted content</p>
-                  <h2 id="import-fields-title">Fields to review</h2>
+                  <p className="page-eyebrow">Converted test structure</p>
+                  <h2 id="structured-reading-review-title">
+                    Structured Reading review
+                  </h2>
                 </div>
               </div>
 
               <div className="import-fields">
-                {draft.fields.map((field) => (
-                  <article
-                    key={field.id}
-                    className={`import-field-card${
-                      selectedFieldId === field.id ? ' selected' : ''
-                    }`}
-                  >
+                {readingModel.semanticReviewItems.map((item) => (
+                  <article key={item.id} className="import-field-card">
                     <div className="import-field-card-heading">
-                      <strong>{field.kind}</strong>
-                      <VerificationBadge state={field.verification.state} />
+                      <strong>{item.label}</strong>
+                      <VerificationBadge state={item.state} />
                     </div>
-                    <p>{fieldPreview(field)}</p>
+                    <p>{item.value ?? item.message ?? 'Review required'}</p>
                     <div className="import-field-card-footer">
-                      <small>{field.critical ? 'Critical' : 'Non-critical'}</small>
-                      <button
-                        type="button"
-                        className="secondary-action"
-                        onClick={() => setSelectedFieldId(field.id)}
-                      >
-                        {field.critical && !isResolved(field)
-                          ? `Review & Confirm ${field.kind}`
-                          : `View evidence ${field.kind}`}
-                      </button>
+                      <small>{item.critical ? 'Critical' : 'Non-critical'}</small>
                     </div>
-                    {selectedFieldId === field.id &&
-                    field.critical &&
-                    !isResolved(field) ? (
-                      <ConflictEditor
-                        key={field.id}
-                        field={field}
-                        onConfirm={confirmField}
-                      />
-                    ) : null}
                   </article>
                 ))}
               </div>
             </section>
+          ) : (
+            <div className="import-review-layout">
+              <section className="import-field-list" aria-labelledby="import-fields-title">
+                <div className="import-panel-heading">
+                  <div>
+                    <p className="page-eyebrow">Extracted content</p>
+                    <h2 id="import-fields-title">Fields to review</h2>
+                  </div>
+                </div>
 
-            <div className="import-review-detail">
-              <SourceEvidencePane
-                field={selectedField}
-                sourceDocuments={draft.sourceDocuments}
-              />
+                <div className="import-fields">
+                  {draft.fields.map((field) => (
+                    <article
+                      key={field.id}
+                      className={`import-field-card${
+                        selectedFieldId === field.id ? ' selected' : ''
+                      }`}
+                    >
+                      <div className="import-field-card-heading">
+                        <strong>{field.kind}</strong>
+                        <VerificationBadge state={field.verification.state} />
+                      </div>
+                      <p>{fieldPreview(field)}</p>
+                      <div className="import-field-card-footer">
+                        <small>{field.critical ? 'Critical' : 'Non-critical'}</small>
+                        <button
+                          type="button"
+                          className="secondary-action"
+                          onClick={() => setSelectedFieldId(field.id)}
+                        >
+                          {field.critical && !isResolved(field)
+                            ? `Review & Confirm ${field.kind}`
+                            : `View evidence ${field.kind}`}
+                        </button>
+                      </div>
+                      {selectedFieldId === field.id &&
+                      field.critical &&
+                      !isResolved(field) ? (
+                        <ConflictEditor
+                          key={field.id}
+                          field={field}
+                          onConfirm={confirmField}
+                        />
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <div className="import-review-detail">
+                <SourceEvidencePane
+                  field={selectedField}
+                  sourceDocuments={draft.sourceDocuments}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <footer className="import-publish-bar">
             <div role="status">
-              {unresolvedCriticalCount === 0 ? (
+              {activeBlockingCount === 0 ? (
                 <strong>All critical imported fields are resolved</strong>
               ) : (
                 <strong>
-                  {unresolvedCriticalCount} critical field
-                  {unresolvedCriticalCount === 1 ? '' : 's'} still{' '}
-                  {unresolvedCriticalCount === 1 ? 'requires' : 'require'} review
+                  {activeBlockingCount} critical field
+                  {activeBlockingCount === 1 ? '' : 's'} still{' '}
+                  {activeBlockingCount === 1 ? 'requires' : 'require'} review
                 </strong>
               )}
               <small>
@@ -351,7 +417,7 @@ export function ImportWorkspace({
             <button
               type="button"
               className="primary-action"
-              disabled={unresolvedCriticalCount > 0}
+              disabled={activeBlockingCount > 0}
               onClick={() => draft && onPublish?.(draft)}
             >
               Publish imported test
