@@ -414,7 +414,7 @@ npm test -- src/features/importer/ImportWorkspace.test.tsx src/features/importer
 npm run typecheck
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/features/importer/ImportWorkspace* src/features/importer/import-workspace.css
@@ -1013,6 +1013,8 @@ git commit -m "feat: build student-safe Reading packages"
 
 ```ts
 export interface ImportPublisher {
+  readonly profile: 'LOCAL_OFFLINE' | 'CLOUD_SECURE';
+
   publish(input: {
     bundleId: string;
     title: string;
@@ -1064,19 +1066,43 @@ create table public.import_source_assignments (
 
 Enable RLS. Staff can CRUD their institute-visible importer data; students have no access. Reuse `private.current_user_role()`.
 
-- [ ] **Step 2: Add atomic publication RPC**
+- [ ] **Step 2: Add local/offline publisher**
 
-Migration `20260918095100_publish_import_bundle.sql` creates:
+`LocalImportPublisher` writes the immutable student package into the IndexedDB test catalog and writes protected answers into a separate local protected-answer store. Its `profile` is `LOCAL_OFFLINE`.
+
+The Import UI must display this exact warning before first local publication:
+
+```text
+Local/offline scoring stores answer definitions on this device. It is suitable for personal/offline use but does not provide the same answer secrecy as cloud-secure scoring.
+```
+
+This path makes the current hosted preview usable before authentication/admin UI is implemented, while preserving the already-approved offline-scoring trade-off.
+
+- [ ] **Step 3: Add atomic cloud publication RPC**
+
+Migration `20260918095100_publish_import_bundle.sql` creates an exposed entry point:
 
 ```sql
-private.publish_import_bundle(
+create or replace function public.publish_import_bundle(
   p_bundle_id uuid,
   p_student_content jsonb,
   p_answer_definitions jsonb,
   p_verification_records jsonb
 )
 returns table(test_id uuid, version_id uuid, version_number integer)
+language plpgsql
+security definer
+set search_path = ''
+as $
+-- function body
+$;
+
+revoke all on function public.publish_import_bundle(uuid, jsonb, jsonb, jsonb) from public;
+revoke all on function public.publish_import_bundle(uuid, jsonb, jsonb, jsonb) from anon;
+grant execute on function public.publish_import_bundle(uuid, jsonb, jsonb, jsonb) to authenticated;
 ```
+
+The exposed function may call private helper functions, but the browser-facing RPC itself must live in the exposed `public` schema.
 
 Behavior in one transaction/function call:
 
@@ -1096,12 +1122,21 @@ Behavior in one transaction/function call:
 
 The existing publication guard remains active.
 
-- [ ] **Step 3: Write RED adapter test**
+- [ ] **Step 4: Write RED publisher tests**
 
-Mock Supabase RPC:
+Cover both profiles:
 
 ```ts
-it('publishes only through the atomic RPC', async () => {
+it('publishes locally without Supabase', async () => {
+  const publisher = new LocalImportPublisher(localCatalog, localProtectedAnswers);
+  const result = await publisher.publish(publicationInput());
+
+  expect(publisher.profile).toBe('LOCAL_OFFLINE');
+  expect(await localCatalog.loadPublishedTest(result.testId, result.versionId)).toBeTruthy();
+  expect(await localProtectedAnswers.load(result.versionId)).toHaveLength(40);
+});
+
+it('publishes cloud-secure content only through the atomic RPC', async () => {
   const client = fakeSupabase();
   const publisher = new SupabaseImportPublisher(client);
 
@@ -1118,14 +1153,14 @@ it('publishes only through the atomic RPC', async () => {
 });
 ```
 
-- [ ] **Step 4: Implement adapter and run GREEN**
+- [ ] **Step 5: Implement publishers and run GREEN**
 
 ```bash
 npm test -- src/features/importer/publication/supabase-import-publisher.test.ts --run
 npm run typecheck
 ```
 
-- [ ] **Step 5: Apply migrations to the existing Supabase project**
+- [ ] **Step 6: Apply migrations to the existing Supabase project**
 
 Before applying, call `list_migrations` and confirm the exact version numbers are unused.
 
@@ -1201,7 +1236,9 @@ No generative similarity. No web calls. Deterministic normalization only.
 
 - [ ] **Step 4: Add server-side scoring RPC**
 
-`private.score_objective_attempt(p_attempt_id uuid)`:
+Create the exposed RPC as `public.score_objective_attempt(p_attempt_id uuid)` with `SECURITY DEFINER`, `set search_path = ''`, revoke from `public` and `anon`, and grant execute only to `authenticated`. Private helpers may remain in the `private` schema.
+
+Behavior:
 
 - authorize attempt owner or staff;
 - require submitted attempt;
@@ -1388,6 +1425,12 @@ npm test -- src/features/importer/ImportWorkspaceContainer.test.tsx --run
 ```
 
 - [ ] **Step 3: Implement publish state**
+
+Publisher selection:
+
+- when an authenticated `CLOUD_SECURE` publisher is available, make it the default;
+- otherwise allow `LOCAL_OFFLINE` publication with the explicit answer-secrecy warning;
+- never label local/offline publication as cloud-secure.
 
 Button states:
 
