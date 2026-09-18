@@ -1,4 +1,4 @@
-import type { SourceEvidence } from '../domain';
+import type { NormalizedRect, SourceEvidence, VerificationState } from '../domain';
 
 export interface ReadingSourceBlock {
   pageNumber: number;
@@ -63,11 +63,19 @@ export interface ImportedVisualRegion {
   sourceDocumentId: string;
   pageNumber: number;
   kind: 'DIAGRAM' | 'TABLE' | 'OTHER';
+  crop: NormalizedRect;
+}
+
+export interface VisualAnchorDraft {
+  questionNumber: number;
+  visualRegionId: string;
+  anchor: NormalizedRect | null;
+  verificationState: VerificationState;
 }
 
 export interface StructureReviewItem {
   id: string;
-  kind: 'DOCUMENT_STRUCTURE' | 'QUESTION_TYPE' | 'QUESTION_TEXT';
+  kind: 'DOCUMENT_STRUCTURE' | 'QUESTION_TYPE' | 'QUESTION_TEXT' | 'VISUAL_ANCHOR';
   questionNumber?: number;
   message: string;
   evidence: SourceEvidence[];
