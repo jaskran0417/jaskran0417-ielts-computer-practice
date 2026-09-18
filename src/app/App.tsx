@@ -119,6 +119,53 @@ export default function App({
 
   async function scoreSubmittedReading(attempt: ExamAttemptState) {
     try {
+      const readingModule = activeTest?.modules.find((module) => module.kind === 'READING');
+      const scoringMode = readingModule?.scoringMode ?? 'AUTO';
+      const totalQuestions =
+        readingModule?.sections.reduce(
+          (total, section) =>
+            total +
+            section.questionGroups.reduce(
+              (groupTotal, group) => groupTotal + group.questions.length,
+              0,
+            ),
+          0,
+        ) ?? 0;
+
+      if (scoringMode === 'MANUAL') {
+        setSessionResult({
+          selectedModules: session?.modules ?? ['READING'],
+          modules: [
+            {
+              module: 'READING',
+              assessmentState: 'PENDING_MANUAL',
+              totalQuestions,
+            },
+          ],
+          overallBand: null,
+          overallStatus: 'PENDING',
+        });
+        setCatalogError(null);
+        return;
+      }
+
+      if (scoringMode === 'UNSCORED') {
+        setSessionResult({
+          selectedModules: session?.modules ?? ['READING'],
+          modules: [
+            {
+              module: 'READING',
+              assessmentState: 'UNSCORED',
+              totalQuestions,
+            },
+          ],
+          overallBand: null,
+          overallStatus: 'NOT_APPLICABLE',
+        });
+        setCatalogError(null);
+        return;
+      }
+
       const definitions = await protectedAnswers.load(attempt.testVersionId);
       if (!definitions) {
         throw new Error('Protected answers for this local test are unavailable');
@@ -134,6 +181,7 @@ export default function App({
         modules: [
           {
             module: 'READING',
+            assessmentState: 'SCORED',
             rawScore: score.rawScore,
             totalQuestions: score.totalQuestions,
           },
