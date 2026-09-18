@@ -1,4 +1,5 @@
 export type ModuleKind = 'READING' | 'LISTENING' | 'WRITING';
+export type ObjectiveScoringMode = 'AUTO' | 'MANUAL' | 'UNSCORED';
 
 export interface MediaAsset {
   id: string;
@@ -20,6 +21,7 @@ export interface ReadingModule {
   id: string;
   kind: 'READING';
   title: string;
+  scoringMode?: ObjectiveScoringMode;
   sections: ReadingSection[];
 }
 
