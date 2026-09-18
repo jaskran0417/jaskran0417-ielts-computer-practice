@@ -103,6 +103,105 @@ describe('buildReadingImportModel', () => {
     expect(model.answerCoverage.blockingReasons).toEqual([]);
   });
 
+  it('keeps diagram questions blocked until their answer anchor is explicitly confirmed', () => {
+    const bundle: ImportBundle = {
+      id: 'bundle-visual',
+      module: 'READING',
+      title: 'Visual Reading Test',
+      sourceDocuments: [
+        {
+          id: 'pdf-visual',
+          name: 'visual-reading.pdf',
+          mediaType: 'application/pdf',
+          sizeBytes: 100,
+          kind: 'PDF',
+          createdAtMs: 1,
+        },
+      ],
+      assignments: [
+        {
+          sourceDocumentId: 'pdf-visual',
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 2 }],
+        },
+        {
+          sourceDocumentId: 'pdf-visual',
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 3, endPage: 3 }],
+        },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 2,
+    };
+
+    const passageField = (id: string, pageNumber: number, value: string): ImportFieldRecord => ({
+      id,
+      kind: 'PASSAGE_TEXT',
+      critical: true,
+      verification: {
+        state: 'VERIFIED',
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: {
+            documentId: 'pdf-visual',
+            pageNumber,
+            method: 'PDF_TEXT',
+          },
+        },
+      },
+    });
+
+    const draft: ImportDraft = {
+      id: 'draft-visual',
+      testId: 'test-visual',
+      sourceDocuments: bundle.sourceDocuments,
+      fields: [
+        passageField(
+          'page-1',
+          1,
+          ['Passage 1', 'A Visual Passage', 'The outer layer is the corona.'].join('\n'),
+        ),
+        passageField(
+          'page-2',
+          2,
+          [
+            'Questions 1-1',
+            'Label the diagram below. Choose NO MORE THAN TWO WORDS from the passage.',
+            '1. Outer layer',
+          ].join('\n'),
+        ),
+        passageField('page-3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 2,
+    };
+
+    const model = buildReadingImportModel({
+      bundle,
+      draft,
+      visualRegions: [
+        {
+          id: 'diagram-1',
+          sourceDocumentId: 'pdf-visual',
+          pageNumber: 2,
+          kind: 'DIAGRAM',
+          crop: { x: 0.1, y: 0.2, width: 0.8, height: 0.5 },
+        },
+      ],
+    });
+
+    expect(model.semanticReviewItems).toContainEqual(
+      expect.objectContaining({
+        kind: 'VISUAL_ANCHOR',
+        questionNumber: 1,
+        state: 'REVIEW_REQUIRED',
+      }),
+    );
+    expect(model.canPublish).toBe(false);
+  });
+
   it('does not silently convert an arbitrary screenshot without Reading structure', () => {
     const bundle: ImportBundle = {
       id: 'bundle-2',
