@@ -4,12 +4,21 @@ function normalizeRestoredAttempt(state: ExamAttemptState): ExamAttemptState {
   const legacy = state as ExamAttemptState & {
     highlights?: ExamAttemptState['highlights'];
     notes?: ExamAttemptState['notes'];
+    listeningPlayback?: ExamAttemptState['listeningPlayback'];
   };
 
   return {
     ...state,
     highlights: legacy.highlights ?? [],
     notes: legacy.notes ?? [],
+    ...(legacy.listeningPlayback
+      ? {
+          listeningPlayback: {
+            ...legacy.listeningPlayback,
+            pauses: legacy.listeningPlayback.pauses ?? [],
+          },
+        }
+      : {}),
   };
 }
 
@@ -70,6 +79,86 @@ export function examReducer(state: ExamAttemptState, action: ExamAction): ExamAt
       return {
         ...state,
         notes: state.notes.filter((item) => item.id !== action.noteId),
+      };
+    case 'LISTENING_STARTED':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          partIndex: action.partIndex,
+          audioPositionSeconds: action.audioPositionSeconds,
+          started: true,
+          ended: false,
+        },
+      };
+    case 'LISTENING_PROGRESS':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          partIndex: action.partIndex,
+          audioPositionSeconds: action.audioPositionSeconds,
+        },
+      };
+    case 'LISTENING_PART_CHANGED':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          partIndex: action.partIndex,
+          audioPositionSeconds: action.audioPositionSeconds,
+          started: true,
+          ended: false,
+        },
+      };
+    case 'LISTENING_PRACTICE_PAUSE_STARTED':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          pauses: [
+            ...state.listeningPlayback.pauses.filter(
+              (pause) => pause.id !== action.pause.id,
+            ),
+            action.pause,
+          ],
+        },
+      };
+    case 'LISTENING_PRACTICE_PAUSE_ENDED':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          audioPositionSeconds: action.audioPositionSeconds,
+          pauses: state.listeningPlayback.pauses.map((pause) =>
+            pause.id === action.pauseId
+              ? { ...pause, endedAtMs: action.endedAtMs }
+              : pause,
+          ),
+        },
+      };
+    case 'LISTENING_FINAL_REVIEW_STARTED':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          finalReviewStartedAtMs: action.startedAtMs,
+        },
+      };
+    case 'LISTENING_ENDED':
+      if (!state.listeningPlayback) return state;
+      return {
+        ...state,
+        listeningPlayback: {
+          ...state.listeningPlayback,
+          ended: true,
+        },
       };
     case 'SUBMIT':
       return { ...state, status: 'SUBMITTED', submittedAtMs: action.submittedAtMs };
