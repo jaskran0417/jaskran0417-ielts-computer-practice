@@ -95,7 +95,7 @@ function parseRomanOptions(pageText: string): ReadingChoiceOptionDraft[] {
   let collecting = false;
 
   for (const rawLine of pageText.split(/\r?\n/)) {
-    const line = rawLine.trim();
+    const line = normalizePdfSpacing(rawLine).trim();
     if (!line) continue;
 
     if (/^List of Headings\b/i.test(line)) {
@@ -105,7 +105,7 @@ function parseRomanOptions(pageText: string): ReadingChoiceOptionDraft[] {
 
     if (!collecting) continue;
 
-    const option = line.match(/^([ivxlcdm]+)[.)]?\s+(.+)$/i);
+    const option = line.match(/^([ivxlcdm]+)\s*[.)]?\s+(.+)$/i);
     if (option) {
       options.push({
         id: (option[1] ?? '').toLowerCase(),
