@@ -1,8 +1,21 @@
 import type { ExamAction, ExamAttemptState } from './types';
 
+function normalizeRestoredAttempt(state: ExamAttemptState): ExamAttemptState {
+  const legacy = state as ExamAttemptState & {
+    highlights?: ExamAttemptState['highlights'];
+    notes?: ExamAttemptState['notes'];
+  };
+
+  return {
+    ...state,
+    highlights: legacy.highlights ?? [],
+    notes: legacy.notes ?? [],
+  };
+}
+
 export function examReducer(state: ExamAttemptState, action: ExamAction): ExamAttemptState {
   if (action.type === 'RESTORE_ATTEMPT') {
-    return action.state;
+    return normalizeRestoredAttempt(action.state);
   }
 
   if (state.status === 'SUBMITTED') {
@@ -31,6 +44,32 @@ export function examReducer(state: ExamAttemptState, action: ExamAction): ExamAt
         visitedQuestionIds: state.visitedQuestionIds.includes(action.questionId)
           ? state.visitedQuestionIds
           : [...state.visitedQuestionIds, action.questionId],
+      };
+    case 'ADD_HIGHLIGHT':
+      return {
+        ...state,
+        highlights: [
+          ...state.highlights.filter((item) => item.id !== action.highlight.id),
+          action.highlight,
+        ],
+      };
+    case 'REMOVE_HIGHLIGHT':
+      return {
+        ...state,
+        highlights: state.highlights.filter((item) => item.id !== action.highlightId),
+      };
+    case 'UPSERT_NOTE':
+      return {
+        ...state,
+        notes: [
+          ...state.notes.filter((item) => item.id !== action.note.id),
+          action.note,
+        ],
+      };
+    case 'DELETE_NOTE':
+      return {
+        ...state,
+        notes: state.notes.filter((item) => item.id !== action.noteId),
       };
     case 'SUBMIT':
       return { ...state, status: 'SUBMITTED', submittedAtMs: action.submittedAtMs };
