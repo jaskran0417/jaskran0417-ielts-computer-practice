@@ -260,8 +260,10 @@ export function ImportWorkspace({
             <div>
               <span>Sources</span>
               <strong>
-                {draft.sourceDocuments.length} file
-                {draft.sourceDocuments.length === 1 ? '' : 's'}
+                {draft.sourceDocuments[0]?.name ?? 'Imported source'}
+                {draft.sourceDocuments.length > 1
+                  ? ` +${draft.sourceDocuments.length - 1} more`
+                  : ''}
               </strong>
             </div>
             <div>
