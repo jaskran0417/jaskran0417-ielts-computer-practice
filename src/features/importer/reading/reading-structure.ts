@@ -58,13 +58,31 @@ export type ReadingQuestionType =
   | 'FLOW_CHART_COMPLETION'
   | 'DIAGRAM_LABEL_COMPLETION';
 
+export interface StructuredQuestionOption {
+  id: string;
+  label: string;
+}
+
+export interface StructuredQuestionDraft {
+  id: string;
+  number: number;
+  questionType: ReadingQuestionType;
+  prompt: string;
+  options?: StructuredQuestionOption[];
+  constraints?: InstructionConstraints;
+  assetId?: string;
+  anchor?: NormalizedRect;
+  evidence: SourceEvidence[];
+}
+
 export interface StructuredQuestionGroupDraft {
   id: string;
   range: readonly [number, number];
   pageNumber: number;
   sourceText: string;
-  questionType?: ReadingQuestionType;
+  questionType?: ReadingQuestionType | null;
   instructionConstraints?: InstructionConstraints;
+  questions: StructuredQuestionDraft[];
   evidence: SourceEvidence[];
 }
 
