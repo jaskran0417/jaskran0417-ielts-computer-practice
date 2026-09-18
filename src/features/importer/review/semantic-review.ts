@@ -121,7 +121,15 @@ export function buildSemanticReviewQueue(input: {
         kind === 'DOCUMENT_STRUCTURE'
           ? 'Document structure'
           : review.questionNumber
-            ? `Question ${review.questionNumber} ${kind === 'VISUAL_ANCHOR' ? 'visual anchor' : kind === 'QUESTION_TYPE' ? 'type' : 'text'}`
+            ? `Question ${review.questionNumber} ${
+                kind === 'VISUAL_ANCHOR'
+                  ? 'visual anchor'
+                  : kind === 'QUESTION_TYPE'
+                    ? 'type'
+                    : kind === 'OPTION_LIST'
+                      ? 'options'
+                      : 'text'
+              }`
             : 'Imported structure',
       critical: true,
       value: null,
