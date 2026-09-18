@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ImportFieldRecord } from '../local/import-repository';
-import { fieldsToReadingBlocks, preferredImportFieldText } from './reading-import-source-selection';
+import {
+  fieldsForAssignments,
+  fieldsToReadingBlocks,
+  preferredImportFieldText,
+} from './reading-import-source-selection';
 
 function pdfField(value: string): ImportFieldRecord {
   return {
@@ -44,5 +48,58 @@ describe('Reading import source normalization', () => {
     expect(text).not.toMatch(/[\u200B-\u200D\uFEFF\u00A0]/);
 
     expect(fieldsToReadingBlocks([field])[0]?.text).toBe(text);
+  });
+
+  it('uses only the cropped re-extraction for a region assignment', () => {
+    const wholePage = pdfField('Whole page text');
+    const region = { x: 0.55, y: 0.65, width: 0.35, height: 0.2 };
+    const cropped: ImportFieldRecord = {
+      ...pdfField('29 C\n30 F'),
+      id: 'answer-region',
+      kind: 'ANSWER',
+      sourceRegion: region,
+      verification: {
+        ...pdfField('29 C\n30 F').verification,
+        passA: {
+          value: '29 C\n30 F',
+          confidence: 95,
+          evidence: {
+            documentId: 'reading-pdf',
+            pageNumber: 11,
+            region,
+            method: 'OCR_A',
+          },
+        },
+      },
+    };
+
+    const draft = {
+      id: 'draft-1',
+      testId: 'test-1',
+      sourceDocuments: [],
+      fields: [wholePage, cropped],
+      updatedAtMs: 1,
+    };
+
+    expect(
+      fieldsForAssignments(draft, [
+        {
+          sourceDocumentId: 'reading-pdf',
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 11, endPage: 11 }],
+          region,
+        },
+      ]).map((field) => field.id),
+    ).toEqual(['answer-region']);
+
+    expect(
+      fieldsForAssignments(draft, [
+        {
+          sourceDocumentId: 'reading-pdf',
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 11, endPage: 11 }],
+        },
+      ]).map((field) => field.id),
+    ).toEqual(['page-11']);
   });
 });
