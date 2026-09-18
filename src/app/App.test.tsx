@@ -147,8 +147,19 @@ describe('App session flow', () => {
 
   it('launches Reading-only into the focused existing exam player', async () => {
     const user = userEvent.setup();
-    render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        nowMs={1_000}
+      />,
+    );
 
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('button', { name: 'Create session' }));
 
@@ -159,8 +170,19 @@ describe('App session flow', () => {
 
   it('does not fake an exam when a selected module player is not attached yet', async () => {
     const user = userEvent.setup();
-    render(<App repository={new EmptyAttemptRepository()} nowMs={2_000} />);
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        nowMs={2_000}
+      />,
+    );
 
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
     await user.click(screen.getByRole('checkbox', { name: 'Listening' }));
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('radio', { name: 'Mock test' }));
