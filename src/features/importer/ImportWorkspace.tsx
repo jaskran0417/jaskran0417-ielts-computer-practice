@@ -9,6 +9,7 @@ export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
 
 export interface ImportWorkspaceProps {
   processFile: ImportFileProcessor;
+  initialDraft?: ImportDraft | null;
   onDraftChange?(draft: ImportDraft): void;
   onPublish?(draft: ImportDraft): void;
 }
@@ -24,6 +25,19 @@ function isResolved(field: ImportFieldRecord): boolean {
   return false;
 }
 
+function preferredFieldId(draft: ImportDraft | null | undefined): string | null {
+  if (!draft) return null;
+
+  const preferred =
+    draft.fields.find(
+      (field) =>
+        field.verification.state === 'REVIEW_REQUIRED' ||
+        field.verification.state === 'UNREADABLE',
+    ) ?? draft.fields[0];
+
+  return preferred?.id ?? null;
+}
+
 function fieldPreview(field: ImportFieldRecord): string {
   return (
     field.confirmedValue ??
@@ -34,9 +48,16 @@ function fieldPreview(field: ImportFieldRecord): string {
   );
 }
 
-export function ImportWorkspace({ processFile, onDraftChange, onPublish }: ImportWorkspaceProps) {
-  const [draft, setDraft] = useState<ImportDraft | null>(null);
-  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+export function ImportWorkspace({
+  processFile,
+  initialDraft = null,
+  onDraftChange,
+  onPublish,
+}: ImportWorkspaceProps) {
+  const [draft, setDraft] = useState<ImportDraft | null>(initialDraft);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(() =>
+    preferredFieldId(initialDraft),
+  );
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,13 +74,7 @@ export function ImportWorkspace({ processFile, onDraftChange, onPublish }: Impor
     try {
       const nextDraft = await processFile(file);
       setDraft(nextDraft);
-      const firstReviewField =
-        nextDraft.fields.find(
-          (field) =>
-            field.verification.state === 'REVIEW_REQUIRED' ||
-            field.verification.state === 'UNREADABLE',
-        ) ?? nextDraft.fields[0];
-      setSelectedFieldId(firstReviewField?.id ?? null);
+      setSelectedFieldId(preferredFieldId(nextDraft));
       onDraftChange?.(nextDraft);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to import this file';
