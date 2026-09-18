@@ -498,3 +498,12 @@
   font-weight: 500;
   line-height: 1.4;
 }
+
+
+.import-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
