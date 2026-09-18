@@ -141,7 +141,7 @@ describe('ImportWorkspaceContainer', () => {
         'restored-reading.pdf',
       ),
     );
-    expect(await screen.findByRole('option', { name: 'restored-reading.pdf' })).toBeInTheDocument();
+    expect(await screen.findByText('restored-reading.pdf', { selector: '.import-summary-bar strong' })).toBeInTheDocument();
   });
 
   it('restores the newest local draft and saves explicit review changes', async () => {
@@ -195,7 +195,7 @@ describe('ImportWorkspaceContainer', () => {
       new File(['pdf'], 'restored-reading.pdf', { type: 'application/pdf' }),
     );
 
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'restored-reading.pdf' })).toBeInTheDocument();
     expect(
       await screen.findByRole('alert', { name: 'Import storage error' }),
     ).toHaveTextContent('IndexedDB unavailable');
