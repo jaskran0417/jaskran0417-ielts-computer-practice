@@ -72,7 +72,28 @@ function expandSimpleSlash(body: string): string[] | null {
   });
 }
 
+function expandPercentageAlternatives(body: string): string[] | null {
+  const match = body
+    .trim()
+    .match(/^([^/\s]+)\/(\d+)\s+percent\/per\s+cent\/%$/i);
+
+  if (!match?.[1] || !match[2]) return null;
+
+  const wordNumber = match[1];
+  const digits = match[2];
+  return [
+    `${wordNumber} percent`,
+    `${wordNumber} per cent`,
+    `${digits} percent`,
+    `${digits} per cent`,
+    `${digits}%`,
+  ];
+}
+
 function expandBodyAlternatives(body: string): string[] | null {
+  const percentageAlternatives = expandPercentageAlternatives(body);
+  if (percentageAlternatives) return percentageAlternatives;
+
   const spacedAlternatives = body
     .split(/\s+\/\s+/)
     .map((value) => value.trim())
