@@ -231,6 +231,53 @@ export function ImportWorkspace({
     }
   }
 
+  function removeSource(sourceDocumentId: string) {
+    if (!bundle) return;
+    const nowMs = Date.now();
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      sourceDocuments: bundle.sourceDocuments.filter((source) => source.id !== sourceDocumentId),
+      assignments: bundle.assignments.filter((assignment) => assignment.sourceDocumentId !== sourceDocumentId),
+      updatedAtMs: nowMs,
+    };
+    const nextDraft = draft
+      ? {
+          ...draft,
+          sourceDocuments: draft.sourceDocuments.filter((source) => source.id !== sourceDocumentId),
+          fields: draft.fields.filter((field) => field.sourceDocumentId !== sourceDocumentId),
+          visualAssets: (draft.visualAssets ?? []).filter((asset) => asset.sourceDocumentId !== sourceDocumentId),
+          updatedAtMs: nowMs,
+        }
+      : null;
+
+    setBundle(nextBundle);
+    setDraft(nextDraft);
+    setSelectedFieldId(preferredFieldId(nextDraft));
+    setError(null);
+    onBundleChange?.(nextBundle);
+    if (nextDraft) onDraftChange?.(nextDraft);
+  }
+
+  function removeAssignment(index: number) {
+    if (!bundle) return;
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      assignments: bundle.assignments.filter((_, assignmentIndex) => assignmentIndex !== index),
+      updatedAtMs: Date.now(),
+    };
+    setBundle(nextBundle);
+    setError(null);
+    onBundleChange?.(nextBundle);
+  }
+
+  function clearImport() {
+    setBundle(null);
+    setDraft(null);
+    setSelectedFieldId(null);
+    setExpandedSemanticItemId(null);
+    setError(null);
+  }
+
   function assignRole(assignment: ImportSourceAssignment) {
     if (!bundle) return;
 
@@ -364,6 +411,9 @@ export function ImportWorkspace({
         onCreate={createBundle}
         onAddFiles={(files) => void addFiles(files)}
         onAssign={assignRole}
+        onRemoveSource={removeSource}
+        onRemoveAssignment={removeAssignment}
+        onClearImport={clearImport}
       />
 
       {isImporting ? (
