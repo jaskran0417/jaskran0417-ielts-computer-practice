@@ -1,132 +1,146 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type {
-  ImportDraft,
-  ImportRepository,
-} from './local/import-repository';
+import type { ImportBundle } from './bundle/types';
 import { ImportWorkspaceContainer } from './ImportWorkspaceContainer';
+import type { ImportBundleRepository } from './local/import-bundle-repository';
+import type { ImportDraft } from './local/import-repository';
 
-const restoredDraft: ImportDraft = {
-  id: 'draft-restored',
-  testId: 'test-restored',
+class FakeBundleRepository implements ImportBundleRepository {
+  saved: ImportBundle[] = [];
+
+  constructor(private readonly bundles: ImportBundle[] = []) {}
+
+  async loadBundle(id: string) {
+    return this.bundles.find((bundle) => bundle.id === id) ?? null;
+  }
+
+  async listBundles() {
+    return [...this.bundles];
+  }
+
+  async saveBundle(bundle: ImportBundle) {
+    this.saved.push(bundle);
+    const index = this.bundles.findIndex((item) => item.id === bundle.id);
+    if (index >= 0) this.bundles[index] = bundle;
+    else this.bundles.push(bundle);
+  }
+
+  async deleteBundle() {}
+}
+
+const processedDraft: ImportDraft = {
+  id: 'processor-draft',
+  testId: 'processor-test',
   sourceDocuments: [
     {
-      id: 'source-restored',
-      name: 'restored-reading.pdf',
+      id: 'source-1',
+      name: 'Reading_Test_1.pdf',
       mediaType: 'application/pdf',
-      sizeBytes: 2048,
+      sizeBytes: 4096,
       kind: 'PDF',
-      createdAtMs: 1_000,
+      createdAtMs: 2_000,
+      sourceBytes: new TextEncoder().encode('%PDF-source').buffer,
     },
   ],
-  fields: [
-    {
-      id: 'question-restored',
-      kind: 'QUESTION_TEXT',
-      critical: true,
-      verification: {
-        state: 'REVIEW_REQUIRED',
-        normalizedValue: null,
-        reasons: ['Independent extraction passes disagree'],
-        passA: {
-          value: 'The library closes at six.',
-          confidence: null,
-          evidence: {
-            documentId: 'source-restored',
-            pageNumber: 2,
-            method: 'PDF_TEXT',
-          },
-        },
-        passB: {
-          value: 'The library closes at eight.',
-          confidence: 85,
-          evidence: {
-            documentId: 'source-restored',
-            pageNumber: 2,
-            method: 'OCR_B',
-          },
-        },
-      },
-    },
-  ],
+  fields: [],
   updatedAtMs: 2_000,
 };
 
-class FakeImportRepository implements ImportRepository {
-  saved: ImportDraft[] = [];
-
-  constructor(private readonly drafts: ImportDraft[]) {}
-
-  async loadDraft(id: string) {
-    return this.drafts.find((draft) => draft.id === id) ?? null;
-  }
-
-  async saveDraft(draft: ImportDraft) {
-    this.saved.push(draft);
-  }
-
-  async deleteDraft() {}
-
-  async listDrafts() {
-    return [...this.drafts];
-  }
-}
-
 describe('ImportWorkspaceContainer', () => {
-  it('restores the newest local draft and saves explicit review changes', async () => {
-    const repository = new FakeImportRepository([restoredDraft]);
-    const processFile = vi.fn();
+  it('creates and persists a manual Reading import bundle', async () => {
+    const repository = new FakeBundleRepository();
+    const user = userEvent.setup();
 
     render(
       <ImportWorkspaceContainer
         repository={repository}
-        processFile={processFile}
+        processFile={vi.fn(async () => processedDraft)}
+        now={() => 1_000}
+        createId={() => 'bundle-1'}
       />,
     );
 
-    expect(screen.getByText('Loading local import draft…')).toBeInTheDocument();
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
-
-    const confirmedValue = screen.getByRole('textbox', { name: 'Confirmed value' });
-    const user = userEvent.setup();
-    await user.clear(confirmedValue);
-    await user.type(confirmedValue, 'The library closes at six.');
-    await user.click(screen.getByRole('button', { name: 'Confirm value' }));
+    await screen.findByText('Create an import bundle');
+    await user.click(screen.getByRole('radio', { name: 'Reading' }));
+    await user.type(screen.getByLabelText('Test title'), 'Reading Test 1');
+    await user.click(screen.getByRole('button', { name: 'Create import' }));
 
     await waitFor(() => expect(repository.saved).toHaveLength(1));
-    expect(repository.saved[0].fields[0]).toMatchObject({
-      confirmedValue: 'The library closes at six.',
-      verification: { state: 'CONFIRMED' },
+    expect(repository.saved[0]).toMatchObject({
+      id: 'bundle-1',
+      testId: 'bundle-1',
+      module: 'READING',
+      title: 'Reading Test 1',
+      status: 'COLLECTING_SOURCES',
     });
-    expect(screen.getByText('Saved locally')).toBeInTheDocument();
   });
 
-  it('shows local persistence failures instead of silently losing the draft', async () => {
-    const repository = new FakeImportRepository([]);
-    repository.saveDraft = vi.fn(async () => {
-      throw new Error('IndexedDB unavailable');
-    });
-
-    const processFile = vi.fn(async () => restoredDraft);
+  it('adds an extracted local source to the current bundle and preserves source bytes', async () => {
+    const existing: ImportBundle = {
+      id: 'bundle-1',
+      testId: 'test-1',
+      module: 'READING',
+      title: 'Reading Test 1',
+      sourceDocuments: [],
+      assignments: [],
+      structuredDraft: null,
+      status: 'COLLECTING_SOURCES',
+      updatedAtMs: 1_000,
+    };
+    const repository = new FakeBundleRepository([existing]);
+    const user = userEvent.setup();
 
     render(
       <ImportWorkspaceContainer
         repository={repository}
-        processFile={processFile}
+        processFile={vi.fn(async () => processedDraft)}
+        now={() => 2_000}
+        createId={() => 'unused'}
       />,
     );
 
-    await screen.findByText('No source loaded');
-    const user = userEvent.setup();
+    expect(await screen.findByText('Reading Test 1')).toBeInTheDocument();
+
     await user.upload(
-      screen.getByLabelText('Choose source file'),
-      new File(['pdf'], 'restored-reading.pdf', { type: 'application/pdf' }),
+      screen.getByLabelText('Add source file'),
+      new File(['pdf'], 'Reading_Test_1.pdf', { type: 'application/pdf' }),
     );
 
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(repository.saved.at(-1)?.sourceDocuments).toHaveLength(1),
+    );
+    expect(
+      new TextDecoder().decode(
+        repository.saved.at(-1)?.sourceDocuments[0].sourceBytes,
+      ),
+    ).toBe('%PDF-source');
+  });
+
+  it('reports local persistence failure without discarding the in-memory bundle', async () => {
+    const repository = new FakeBundleRepository();
+    repository.saveBundle = vi.fn(async () => {
+      throw new Error('IndexedDB unavailable');
+    });
+    const user = userEvent.setup();
+
+    render(
+      <ImportWorkspaceContainer
+        repository={repository}
+        processFile={vi.fn(async () => processedDraft)}
+        now={() => 1_000}
+        createId={() => 'bundle-1'}
+      />,
+    );
+
+    await screen.findByText('Create an import bundle');
+    await user.click(screen.getByRole('radio', { name: 'Reading' }));
+    await user.type(screen.getByLabelText('Test title'), 'Reading Test 1');
+    await user.click(screen.getByRole('button', { name: 'Create import' }));
+
     expect(
       await screen.findByRole('alert', { name: 'Import storage error' }),
     ).toHaveTextContent('IndexedDB unavailable');
+    expect(screen.getByText('Reading Test 1')).toBeInTheDocument();
   });
 });
