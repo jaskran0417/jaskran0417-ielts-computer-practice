@@ -8,6 +8,7 @@ export type SemanticReviewKind =
   | 'INSTRUCTION'
   | 'QUESTION_TEXT'
   | 'QUESTION_TYPE'
+  | 'OPTION_LIST'
   | 'VISUAL_ANCHOR'
   | 'ANSWER_DEFINITION';
 
@@ -107,9 +108,11 @@ export function buildSemanticReviewQueue(input: {
         ? 'DOCUMENT_STRUCTURE'
         : review.kind === 'QUESTION_TYPE'
           ? 'QUESTION_TYPE'
-          : review.kind === 'VISUAL_ANCHOR'
-            ? 'VISUAL_ANCHOR'
-            : 'QUESTION_TEXT';
+          : review.kind === 'OPTION_LIST'
+            ? 'OPTION_LIST'
+            : review.kind === 'VISUAL_ANCHOR'
+              ? 'VISUAL_ANCHOR'
+              : 'QUESTION_TEXT';
 
     items.push({
       id: `review-${review.id}`,
