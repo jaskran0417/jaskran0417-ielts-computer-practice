@@ -1,5 +1,8 @@
 import { parseDocumentOutline } from './document-outline-parser';
 import { parseQuestionRanges } from './question-range-parser';
+import { parseInstructionConstraints } from './instruction-parser';
+import { recognizeQuestionType } from './question-type-recognizer';
+import { parseStructuredQuestionGroup } from './reading-question-parser';
 import type {
   PassageMarker,
   QuestionRangeMarker,
@@ -146,13 +149,24 @@ export function parseReadingStructure(
       continue;
     }
 
-    section.questionGroups.push({
+    const recognition = recognizeQuestionType(range.sourceText);
+    const group = {
       id: `questions-${range.start}-${range.end}`,
-      range: [range.start, range.end],
+      range: [range.start, range.end] as const,
       pageNumber: range.pageNumber,
       sourceText: range.sourceText,
+      questionType: recognition.type,
+      instructionConstraints: parseInstructionConstraints(range.sourceText),
+      questions: [],
       evidence: range.evidence,
-    });
+    };
+
+    const sourcePage = pages.find((page) => page.pageNumber === range.pageNumber);
+    const parsedQuestions = parseStructuredQuestionGroup(group, sourcePage?.text ?? range.sourceText);
+    group.questions = parsedQuestions.questions;
+    reviewItems.push(...parsedQuestions.reviewItems);
+
+    section.questionGroups.push(group);
   }
 
   return {
