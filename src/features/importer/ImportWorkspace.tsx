@@ -9,6 +9,7 @@ import type {
 } from './bundle/domain';
 import { ConflictEditor } from './components/ConflictEditor';
 import { SemanticAnswerEditor } from './components/SemanticAnswerEditor';
+import { SemanticStructureEditor } from './components/SemanticStructureEditor';
 import { VisualAnchorEditor } from './components/VisualAnchorEditor';
 import { ImportSourceManager } from './components/ImportSourceManager';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
@@ -444,6 +445,19 @@ export function ImportWorkspace({
                       <div className="import-field-card-heading">
                         <strong>{item.label}</strong>
                         <div className="import-field-card-heading-actions">
+                          {requiresReview &&
+                          (item.kind === 'QUESTION_TEXT' || item.kind === 'OPTION_LIST') ? (
+                            <button
+                              type="button"
+                              className="secondary-action import-review-action"
+                              aria-label={`Review & Confirm ${item.label}`}
+                              onClick={() =>
+                                setExpandedSemanticItemId(expanded ? null : item.id)
+                              }
+                            >
+                              Review & Confirm
+                            </button>
+                          ) : null}
                           {requiresReview && item.kind === 'ANSWER_DEFINITION' ? (
                             <button
                               type="button"
@@ -474,6 +488,14 @@ export function ImportWorkspace({
                           <VerificationBadge state={item.state} />
                         </div>
                       </div>
+                      {expanded &&
+                      (item.kind === 'QUESTION_TEXT' || item.kind === 'OPTION_LIST') ? (
+                        <SemanticStructureEditor
+                          kind={item.kind}
+                          initialValue={item.value ?? ''}
+                          onConfirm={(value) => confirmSemanticAnswer(item.id, value)}
+                        />
+                      ) : null}
                       {expanded && item.kind === 'ANSWER_DEFINITION' ? (
                         <SemanticAnswerEditor
                           initialValue={item.value ?? ''}
