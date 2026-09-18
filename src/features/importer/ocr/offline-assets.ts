@@ -10,7 +10,17 @@ export const REQUIRED_OFFLINE_OCR_ASSETS = [
 ] as const;
 
 function normalizeBaseUrl(baseUrl: string): string {
-  const withLeadingSlash = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+  const normalized = baseUrl.trim() || '/';
+
+  if (normalized === '.' || normalized === './') {
+    return './';
+  }
+
+  if (normalized.startsWith('./') || normalized.startsWith('../')) {
+    return normalized.endsWith('/') ? normalized : `${normalized}/`;
+  }
+
+  const withLeadingSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
   return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
 }
 

@@ -17,6 +17,12 @@ describe('offline importer assets', () => {
       corePath: '/ielts-computer-practice/ocr/core',
       langPath: '/ielts-computer-practice/ocr/lang',
     });
+
+    expect(resolveOfflineOcrAssetPaths('./')).toEqual({
+      workerPath: './ocr/worker.min.js',
+      corePath: './ocr/core',
+      langPath: './ocr/lang',
+    });
   });
 
   it('never resolves OCR dependencies to a remote CDN', () => {

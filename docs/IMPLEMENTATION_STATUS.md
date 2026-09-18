@@ -7,8 +7,9 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 ## Production baseline
 
 - Production branch: `main`
-- Hosting: Netlify
-- GitHub Pages workflow: removed as obsolete; Netlify is the production deployment path.
+- Hosting: GitHub Pages fallback + Netlify when available.
+- GitHub Pages deployment workflow builds and publishes the Vite app from `main`.
+- GitHub Pages URL: `https://jaskran0417.github.io/jaskran0417-ielts-computer-practice/`.
 - Reading real-PDF regression fixes are merged into `main`.
 
 ## Completed and live
@@ -200,7 +201,7 @@ On every continuation:
 5. Use a dedicated feature branch for each phase.
 6. Update this file when a phase changes state.
 7. Merge only after typecheck, full tests and production build are green.
-8. Verify Netlify after merges that affect the web application.
+8. Verify the active hosting target after merges that affect the web application. GitHub Pages is the no-credit fallback; verify its deployment when Pages-related files change.
 
 ## Current resume point
 
