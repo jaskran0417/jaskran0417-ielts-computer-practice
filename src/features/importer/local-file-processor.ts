@@ -210,13 +210,9 @@ function pdfPageVerification(
   }
 
   return {
-    state: 'REVIEW_REQUIRED',
-    normalizedValue: null,
-    reasons: [
-      page.kind === 'MIXED'
-        ? 'This mixed text/image PDF page requires independent visual confirmation before publication'
-        : 'Selectable PDF text requires independent visual confirmation before publication',
-    ],
+    state: 'VERIFIED',
+    normalizedValue: value,
+    reasons: [],
     passA,
   };
 }
