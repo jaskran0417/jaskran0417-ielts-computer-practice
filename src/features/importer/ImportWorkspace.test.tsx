@@ -98,7 +98,7 @@ describe('ImportWorkspace', () => {
     const file = new File(['pdf'], 'practice-test.pdf', { type: 'application/pdf' });
     await user.upload(screen.getByLabelText('Add source files'), file);
 
-    expect(await screen.findByText('practice-test.pdf')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'practice-test.pdf' })).toBeInTheDocument();
     expect(screen.getByText('VERIFIED')).toBeInTheDocument();
     expect(screen.getByText('REVIEW_REQUIRED')).toBeInTheDocument();
     expect(screen.getByText('UNREADABLE')).toBeInTheDocument();
