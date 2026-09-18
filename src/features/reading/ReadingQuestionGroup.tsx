@@ -141,16 +141,7 @@ function VisualQuestionGroup({
               onClick={() => onNavigate(question.id)}
             >
               <span className="question-number-badge">{question.number}</span>
-              <input
-                aria-label={`Question ${question.number} mobile answer`}
-                type="text"
-                value={typeof answers[question.id] === 'string' ? answers[question.id] : ''}
-                disabled={disabled}
-                autoComplete="off"
-                spellCheck={false}
-                onFocus={() => onNavigate(question.id)}
-                onChange={(event) => onAnswer(question.id, event.currentTarget.value)}
-              />
+              <span className="visual-mobile-answer-label">Answer on visual</span>
               <button
                 type="button"
                 className={`review-button compact${reviewed ? ' active' : ''}`}
