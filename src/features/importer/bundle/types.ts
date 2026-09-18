@@ -1,4 +1,7 @@
-import type { SourceDocumentRecord } from '../local/import-repository';
+import type {
+  ImportFieldRecord,
+  SourceDocumentRecord,
+} from '../local/import-repository';
 import type { StructuredReadingDraft } from '../reading/reading-structure';
 
 export type ImportModule = 'READING' | 'LISTENING' | 'WRITING';
@@ -39,6 +42,7 @@ export interface ImportBundle {
   module: ImportModule;
   title: string;
   sourceDocuments: SourceDocumentRecord[];
+  extractedFields: ImportFieldRecord[];
   assignments: ImportSourceAssignment[];
   structuredDraft: StructuredReadingDraft | null;
   status: ImportBundleStatus;
