@@ -67,8 +67,17 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 
 ### Phase A — Reading completion polish
 
-- Passage highlighting.
-- Notes attached to passage/selection context.
+Completed on `feat/reading-highlights-notes` and ready for merge:
+
+- Persistent passage text highlighting stored in attempt state.
+- Persistent notes attached to selected text or whole-passage context.
+- Deterministic highlight rendering from semantic character offsets.
+- Annotation restore through IndexedDB.
+- Selection toolbar and notes panel in the Reading player.
+- Backward-compatible restore for attempts created before annotation fields existed.
+
+Still pending as compatibility/acceptance work:
+
 - Final live-browser acceptance of the user's exact Reading PDF including visual diagram/table geometry.
 - Windows 7 browser smoke test for the Reading path.
 
@@ -188,8 +197,8 @@ On every continuation:
 
 ## Current resume point
 
-After this cleanup branch is merged, the next implementation phase is:
+After the Reading annotation branch is merged, the next implementation phase is:
 
-**Phase A — Reading completion polish**, followed immediately by **Phase B — Listening**.
+**Phase B — Listening**.
 
-The first Reading-polish task is to add shared-domain highlighting/notes behavior without coupling it to PDF/import internals.
+Start with the Listening schema/audio asset model and player state. Keep audio time authoritative from the media element, enforce Practice/Mock policy in the player controller, and reuse the existing protected objective scoring system.
