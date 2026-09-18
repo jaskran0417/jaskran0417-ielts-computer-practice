@@ -32,6 +32,58 @@ describe('examReducer', () => {
     expect(next.visitedQuestionIds).toContain('q3');
   });
 
+  it('adds and removes a passage highlight without mutating previous state', () => {
+    const initial = createAttempt(sampleReadingTest, 1_000);
+    const highlight = {
+      id: 'highlight-1',
+      passageId: 'passage-1',
+      paragraphIndex: 0,
+      startOffset: 0,
+      endOffset: 5,
+      text: 'Urban',
+    };
+
+    const added = examReducer(initial, { type: 'ADD_HIGHLIGHT', highlight });
+    const removed = examReducer(added, {
+      type: 'REMOVE_HIGHLIGHT',
+      highlightId: highlight.id,
+    });
+
+    expect(initial.highlights).toEqual([]);
+    expect(added.highlights).toEqual([highlight]);
+    expect(removed.highlights).toEqual([]);
+  });
+
+  it('upserts and deletes a passage note', () => {
+    const initial = createAttempt(sampleReadingTest, 1_000);
+    const note = {
+      id: 'note-1',
+      passageId: 'passage-1',
+      paragraphIndex: 0,
+      startOffset: 0,
+      endOffset: 5,
+      quote: 'Urban',
+      body: 'Important definition',
+      updatedAtMs: 2_000,
+    };
+
+    const added = examReducer(initial, { type: 'UPSERT_NOTE', note });
+    const edited = examReducer(added, {
+      type: 'UPSERT_NOTE',
+      note: { ...note, body: 'Updated note', updatedAtMs: 3_000 },
+    });
+    const removed = examReducer(edited, {
+      type: 'DELETE_NOTE',
+      noteId: note.id,
+    });
+
+    expect(initial.notes).toEqual([]);
+    expect(added.notes[0]?.body).toBe('Important definition');
+    expect(edited.notes).toHaveLength(1);
+    expect(edited.notes[0]?.body).toBe('Updated note');
+    expect(removed.notes).toEqual([]);
+  });
+
   it('rejects answer changes after submission', () => {
     const initial = createAttempt(sampleReadingTest, 1_000);
     const submitted = examReducer(initial, { type: 'SUBMIT', submittedAtMs: 5_000 });
