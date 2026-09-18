@@ -4,9 +4,10 @@ interface SingleChoiceQuestionProps {
   question: SingleChoiceQuestionModel;
   value?: string;
   onChange(value: string): void;
+  disabled?: boolean;
 }
 
-export function SingleChoiceQuestion({ question, value, onChange }: SingleChoiceQuestionProps) {
+export function SingleChoiceQuestion({ question, value, onChange, disabled = false }: SingleChoiceQuestionProps) {
   return (
     <fieldset className="question-options">
       <legend className="sr-only">Question {question.number} choices</legend>
@@ -17,6 +18,7 @@ export function SingleChoiceQuestion({ question, value, onChange }: SingleChoice
             name={question.id}
             value={option.id}
             checked={value === option.id}
+            disabled={disabled}
             onChange={() => onChange(option.id)}
           />
           <span className="choice-letter">{option.id}</span>
