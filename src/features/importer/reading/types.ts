@@ -56,3 +56,56 @@ export interface QuestionTypeRecognition {
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   reasons: string[];
 }
+
+
+export interface ImportedVisualRegion {
+  id: string;
+  sourceDocumentId: string;
+  pageNumber: number;
+  kind: 'DIAGRAM' | 'TABLE' | 'OTHER';
+}
+
+export interface StructureReviewItem {
+  id: string;
+  kind: 'DOCUMENT_STRUCTURE' | 'QUESTION_TYPE' | 'QUESTION_TEXT';
+  questionNumber?: number;
+  message: string;
+  evidence: SourceEvidence[];
+}
+
+export interface ReadingQuestionDraft {
+  id: string;
+  number: number;
+  type: ReadingQuestionType;
+  prompt: string;
+  instructionConstraints: InstructionConstraints;
+  evidence: SourceEvidence[];
+  visualRegionId?: string;
+}
+
+export interface ReadingQuestionGroupDraft {
+  id: string;
+  startQuestion: number;
+  endQuestion: number;
+  type: ReadingQuestionType;
+  instructionText: string;
+  instructionConstraints: InstructionConstraints;
+  questions: ReadingQuestionDraft[];
+  evidence: SourceEvidence[];
+}
+
+export interface ReadingSectionDraft {
+  id: string;
+  passageNumber: number;
+  title: string | null;
+  pageNumbers: number[];
+  passageText: string[];
+  questionGroups: ReadingQuestionGroupDraft[];
+  evidence: SourceEvidence[];
+}
+
+export interface StructuredReadingDraft {
+  title: string;
+  sections: ReadingSectionDraft[];
+  reviewItems: StructureReviewItem[];
+}
