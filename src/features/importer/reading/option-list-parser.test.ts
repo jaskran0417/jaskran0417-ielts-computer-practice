@@ -207,4 +207,24 @@ describe('Reading option-list parsing', () => {
       }),
     ).toHaveLength(6);
   });
+
+  it('tolerates PDF spacing artifacts in roman-numeral heading labels', () => {
+    const options = parseSharedReadingOptions({
+      type: 'MATCHING_HEADINGS',
+      instructionText: 'Choose the correct headings for Sections B-F.',
+      pageText: [
+        'List of Headings',
+        'i . First heading',
+        'ii.\u200b Second heading',
+        'iii ) Third heading',
+      ].join('\n'),
+    });
+
+    expect(options).toEqual([
+      { id: 'i', label: 'First heading' },
+      { id: 'ii', label: 'Second heading' },
+      { id: 'iii', label: 'Third heading' },
+    ]);
+  });
+
 });
