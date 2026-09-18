@@ -81,6 +81,11 @@ export interface StructureReviewItem {
   evidence: SourceEvidence[];
 }
 
+export interface ReadingChoiceOptionDraft {
+  id: string;
+  label: string;
+}
+
 export interface ReadingQuestionDraft {
   id: string;
   number: number;
@@ -89,7 +94,7 @@ export interface ReadingQuestionDraft {
   instructionConstraints: InstructionConstraints;
   evidence: SourceEvidence[];
   visualRegionId?: string;
-  options?: Array<{ id: string; label: string }>;
+  options?: ReadingChoiceOptionDraft[];
   allowOptionReuse?: boolean;
 }
 
