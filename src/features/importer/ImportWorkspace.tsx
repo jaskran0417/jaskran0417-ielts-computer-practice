@@ -210,7 +210,7 @@ export function ImportWorkspace({
                 sourceDocuments={draft.sourceDocuments}
               />
               {selectedField && selectedField.critical && !isResolved(selectedField) ? (
-                <ConflictEditor field={selectedField} onConfirm={confirmField} />
+                <ConflictEditor key={selectedField.id} field={selectedField} onConfirm={confirmField} />
               ) : null}
             </div>
           </div>
