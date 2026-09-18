@@ -34,7 +34,7 @@ describe('App session flow', () => {
 
     await user.click(screen.getByRole('button', { name: /Import/i }));
 
-    expect(await screen.findByRole('heading', { name: 'Import test material' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Create an import bundle' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Import/i })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: /Sessions/i })).not.toHaveAttribute('aria-current');
   });
@@ -44,13 +44,17 @@ describe('App session flow', () => {
     render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
 
     await user.click(screen.getByRole('button', { name: /Import/i }));
+    await user.click(await screen.findByRole('radio', { name: 'Reading' }));
+    await user.type(screen.getByLabelText('Test title'), 'Local Reading Import');
+    await user.click(screen.getByRole('button', { name: 'Create import' }));
+
     await user.upload(
-      await screen.findByLabelText('Choose source file'),
+      await screen.findByLabelText('Add source file'),
       new File(['1 library\n2 B\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
     );
 
     expect(await screen.findByText('answers.txt')).toBeInTheDocument();
-    expect(screen.getAllByText('VERIFIED')).toHaveLength(3);
+    expect(screen.getByText('No source role assigned yet.')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
