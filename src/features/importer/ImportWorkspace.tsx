@@ -15,6 +15,11 @@ import { SourceEvidencePane } from './components/SourceEvidencePane';
 import { VerificationBadge } from './components/VerificationBadge';
 import type { ImportDraft, ImportFieldRecord } from './local/import-repository';
 import { buildReadingImportModel } from './reading/reading-import-converter';
+import {
+  prepareReadingPublication,
+  type PreparedReadingPublication,
+} from './publication/import-publication';
+import type { MediaAsset } from '../../test-schema/types';
 import './import-workspace.css';
 
 export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
@@ -25,7 +30,7 @@ export interface ImportWorkspaceProps {
   initialBundle?: ImportBundle | null;
   onDraftChange?(draft: ImportDraft): void;
   onBundleChange?(bundle: ImportBundle): void;
-  onPublish?(draft: ImportDraft): void;
+  onPublish?(publication: PreparedReadingPublication): void | Promise<void>;
 }
 
 function createWorkspaceId(): string {
@@ -108,6 +113,7 @@ export function ImportWorkspace({
     preferredFieldId(initialDraft),
   );
   const [isImporting, setIsImporting] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [expandedSemanticItemId, setExpandedSemanticItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -267,6 +273,51 @@ export function ImportWorkspace({
     setBundle(nextBundle);
     setExpandedSemanticItemId(null);
     onBundleChange?.(nextBundle);
+  }
+
+  async function publishReadingTest() {
+    if (!bundle || !draft || !readingModel || activeBlockingCount > 0 || !onPublish) {
+      return;
+    }
+
+    const visualAssets = Object.fromEntries(
+      (draft.visualAssets ?? []).map((asset) => [
+        asset.id,
+        {
+          id: asset.id,
+          url: asset.dataUrl,
+          alt: `Imported source visual from page ${asset.pageNumber}`,
+          kind: 'IMAGE',
+        } satisfies MediaAsset,
+      ]),
+    );
+
+    const prepared = prepareReadingPublication({
+      testId: bundle.id,
+      versionId: createWorkspaceId(),
+      structuredDraft: readingModel.structuredDraft,
+      answerCoverage: readingModel.answerCoverage,
+      reviewItems: readingModel.semanticReviewItems,
+      visualAnchors: readingModel.visualAnchors,
+      visualAssets,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.reasons.join('. '));
+      return;
+    }
+
+    setIsPublishing(true);
+    setError(null);
+    try {
+      await onPublish(prepared.value);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Unable to publish imported test',
+      );
+    } finally {
+      setIsPublishing(false);
+    }
   }
 
   function confirmField(value: string) {
@@ -522,10 +573,10 @@ export function ImportWorkspace({
             <button
               type="button"
               className="primary-action"
-              disabled={activeBlockingCount > 0}
-              onClick={() => draft && onPublish?.(draft)}
+              disabled={activeBlockingCount > 0 || isPublishing || !readingModel || !onPublish}
+              onClick={() => void publishReadingTest()}
             >
-              Publish imported test
+              {isPublishing ? 'Publishing…' : 'Publish imported test'}
             </button>
           </footer>
         </>
