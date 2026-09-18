@@ -72,6 +72,38 @@ describe('ImportBundle', () => {
     expect(withAnswers.updatedAtMs).toBe(101);
   });
 
+  it('allows a precise region on one PDF page and rejects region ranges across pages', () => {
+    const region = { x: 0.1, y: 0.2, width: 0.6, height: 0.3 };
+
+    const assigned = assignSourceRole(
+      bundle(),
+      {
+        sourceDocumentId: 'pdf-1',
+        role: 'QUESTION_MATERIAL',
+        pageRanges: [{ startPage: 3, endPage: 3 }],
+        region,
+      },
+      20,
+    );
+
+    expect(assigned.assignments[0]).toMatchObject({ region });
+
+    const invalid = validateImportBundle(
+      bundle({
+        assignments: [
+          {
+            sourceDocumentId: 'pdf-1',
+            role: 'QUESTION_MATERIAL',
+            pageRanges: [{ startPage: 3, endPage: 4 }],
+            region,
+          },
+        ],
+      }),
+    );
+
+    expect(invalid).toContain('A source region can only be assigned to one page at a time');
+  });
+
   it('rejects invalid page ranges and duplicate identical assignments', () => {
     const invalid = validateImportBundle(
       bundle({

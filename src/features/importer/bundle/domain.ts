@@ -21,6 +21,11 @@ export interface ImportSourceAssignment {
   sourceDocumentId: string;
   role: ImportSourceRole;
   pageRanges?: PageRange[];
+  /**
+   * Optional normalized crop on the selected source page. Region assignments
+   * are intentionally limited to a single page by bundle validation.
+   */
+  region?: NormalizedRect;
 }
 
 export type ImportBundleStatus =

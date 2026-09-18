@@ -14,6 +14,35 @@ function validRange(range: PageRange): boolean {
   );
 }
 
+function sameRegion(
+  left: ImportSourceAssignment['region'],
+  right: ImportSourceAssignment['region'],
+): boolean {
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height
+  );
+}
+
+function validRegion(region: NonNullable<ImportSourceAssignment['region']>): boolean {
+  return (
+    Number.isFinite(region.x) &&
+    Number.isFinite(region.y) &&
+    Number.isFinite(region.width) &&
+    Number.isFinite(region.height) &&
+    region.x >= 0 &&
+    region.y >= 0 &&
+    region.width > 0 &&
+    region.height > 0 &&
+    region.x + region.width <= 1 &&
+    region.y + region.height <= 1
+  );
+}
+
 function sameRanges(left: PageRange[] | undefined, right: PageRange[] | undefined): boolean {
   const a = left ?? [];
   const b = right ?? [];
@@ -33,7 +62,8 @@ function sameAssignment(
   return (
     left.sourceDocumentId === right.sourceDocumentId &&
     left.role === right.role &&
-    sameRanges(left.pageRanges, right.pageRanges)
+    sameRanges(left.pageRanges, right.pageRanges) &&
+    sameRegion(left.region, right.region)
   );
 }
 
@@ -79,6 +109,17 @@ export function validateImportBundle(bundle: ImportBundle): string[] {
       assignment.pageRanges?.some((range) => !validRange(range))
     ) {
       errors.push('Page ranges must use positive pages with startPage <= endPage');
+    }
+
+    if (assignment.region && !validRegion(assignment.region)) {
+      errors.push('Source regions must stay inside the selected page');
+    }
+
+    if (
+      assignment.region &&
+      assignment.pageRanges?.some((range) => range.startPage !== range.endPage)
+    ) {
+      errors.push('A source region can only be assigned to one page at a time');
     }
   }
 

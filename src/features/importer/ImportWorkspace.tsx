@@ -15,6 +15,7 @@ import { ImportSourceManager } from './components/ImportSourceManager';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
 import { VerificationBadge } from './components/VerificationBadge';
 import type { ImportDraft, ImportFieldRecord } from './local/import-repository';
+import type { ImportRegionProcessor } from './local-file-processor';
 import { buildReadingImportModel } from './reading/reading-import-converter';
 import {
   prepareReadingPublication,
@@ -27,6 +28,7 @@ export type ImportFileProcessor = (file: File) => Promise<ImportDraft>;
 
 export interface ImportWorkspaceProps {
   processFile: ImportFileProcessor;
+  processRegion?: ImportRegionProcessor;
   initialDraft?: ImportDraft | null;
   initialBundle?: ImportBundle | null;
   onDraftChange?(draft: ImportDraft): void;
@@ -75,6 +77,21 @@ function fieldBelongsToSource(field: ImportFieldRecord, sourceDocumentId: string
   );
 }
 
+
+function sameNormalizedRegion(
+  left: { x: number; y: number; width: number; height: number } | undefined,
+  right: { x: number; y: number; width: number; height: number } | undefined,
+): boolean {
+  if (!left || !right) return !left && !right;
+  const tolerance = 0.0001;
+  return (
+    Math.abs(left.x - right.x) <= tolerance &&
+    Math.abs(left.y - right.y) <= tolerance &&
+    Math.abs(left.width - right.width) <= tolerance &&
+    Math.abs(left.height - right.height) <= tolerance
+  );
+}
+
 function fieldPreview(field: ImportFieldRecord): string {
   return (
     field.confirmedValue ??
@@ -111,6 +128,7 @@ function mergeDraft(
 
 export function ImportWorkspace({
   processFile,
+  processRegion,
   initialDraft = null,
   initialBundle = null,
   onDraftChange,
@@ -317,14 +335,45 @@ export function ImportWorkspace({
 
   function removeAssignment(index: number) {
     if (!bundle) return;
+    const removed = bundle.assignments[index];
+    const nowMs = Date.now();
     const nextBundle: ImportBundle = {
       ...bundle,
       assignments: bundle.assignments.filter((_, assignmentIndex) => assignmentIndex !== index),
-      updatedAtMs: Date.now(),
+      updatedAtMs: nowMs,
     };
+
+    let nextDraft = draft;
+    if (draft && removed?.region) {
+      const pageNumber = removed.pageRanges?.[0]?.startPage ?? 1;
+      nextDraft = {
+        ...draft,
+        fields: draft.fields.filter((field) => {
+          const evidence = field.verification.passA?.evidence ?? field.verification.passB?.evidence;
+          return !(
+            evidence?.documentId === removed.sourceDocumentId &&
+            evidence.pageNumber === pageNumber &&
+            sameNormalizedRegion(field.sourceRegion, removed.region)
+          );
+        }),
+        visualAssets: (draft.visualAssets ?? []).filter(
+          (asset) =>
+            !(
+              asset.sourceDocumentId === removed.sourceDocumentId &&
+              asset.pageNumber === pageNumber &&
+              sameNormalizedRegion(asset.crop, removed.region)
+            ),
+        ),
+        updatedAtMs: nowMs,
+      };
+    }
+
     setBundle(nextBundle);
+    setDraft(nextDraft);
+    setSelectedFieldId(preferredFieldId(nextDraft));
     setError(null);
     onBundleChange?.(nextBundle);
+    if (nextDraft) onDraftChange?.(nextDraft);
   }
 
 
@@ -396,14 +445,53 @@ export function ImportWorkspace({
     onBundleChange?.(nextBundle);
   }
 
-  function assignRole(assignment: ImportSourceAssignment) {
+  async function assignRole(assignment: ImportSourceAssignment) {
     if (!bundle) return;
 
     try {
+      let nextDraft = draft;
+      if (assignment.region) {
+        if (!processRegion) {
+          throw new Error('Precise source-region extraction is unavailable');
+        }
+        if (!draft) {
+          throw new Error('Import the source file before selecting a region');
+        }
+
+        const source = bundle.sourceDocuments.find(
+          (document) => document.id === assignment.sourceDocumentId,
+        );
+        if (!source) {
+          throw new Error('The selected source file is unavailable');
+        }
+
+        const pageNumber = assignment.pageRanges?.[0]?.startPage ?? 1;
+        const extracted = await processRegion({
+          source,
+          pageNumber,
+          region: assignment.region,
+          role: assignment.role,
+        });
+        const nowMs = Date.now();
+
+        nextDraft = {
+          ...draft,
+          fields: [...draft.fields, extracted.field],
+          visualAssets: [
+            ...(draft.visualAssets ?? []),
+            ...(extracted.visualAsset ? [extracted.visualAsset] : []),
+          ],
+          updatedAtMs: nowMs,
+        };
+      }
+
       const nextBundle = assignSourceRole(bundle, assignment, Date.now());
       setBundle(nextBundle);
+      setDraft(nextDraft);
+      setSelectedFieldId(preferredFieldId(nextDraft));
       setError(null);
       onBundleChange?.(nextBundle);
+      if (nextDraft && nextDraft !== draft) onDraftChange?.(nextDraft);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Unable to assign this source role',

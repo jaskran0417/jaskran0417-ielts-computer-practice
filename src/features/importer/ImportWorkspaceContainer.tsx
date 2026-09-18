@@ -13,6 +13,10 @@ import type {
   ImportDraft,
   ImportRepository,
 } from './local/import-repository';
+import {
+  createLocalRegionProcessor,
+  type ImportRegionProcessor,
+} from './local-file-processor';
 
 export interface ImportPublisher {
   publish(
@@ -22,6 +26,7 @@ export interface ImportPublisher {
 
 export interface ImportWorkspaceContainerProps {
   processFile: ImportFileProcessor;
+  processRegion?: ImportRegionProcessor;
   repository?: ImportRepository;
   publisher?: ImportPublisher;
   onPublished?(): void | Promise<void>;
@@ -43,11 +48,13 @@ function errorMessage(cause: unknown): string {
 
 export function ImportWorkspaceContainer({
   processFile,
+  processRegion,
   repository,
   publisher,
   onPublished,
 }: ImportWorkspaceContainerProps) {
   const defaultRepository = useMemo(() => new IndexedDbImportRepository(), []);
+  const defaultRegionProcessor = useMemo(() => createLocalRegionProcessor(), []);
   const defaultCatalog = useMemo(() => new IndexedDbTestCatalog(), []);
   const defaultProtectedAnswers = useMemo(
     () => new IndexedDbProtectedAnswerRepository(),
@@ -200,6 +207,7 @@ export function ImportWorkspaceContainer({
       ) : null}
       <ImportWorkspace
         processFile={processFile}
+        processRegion={processRegion ?? defaultRegionProcessor}
         initialDraft={loadState.draft}
         initialBundle={loadState.bundle}
         onDraftChange={persistDraft}

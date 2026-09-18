@@ -6,6 +6,8 @@ import type {
   ImportSourceRole,
 } from '../bundle/domain';
 import type { ObjectiveScoringMode } from '../../../test-schema/types';
+import type { NormalizedRect } from '../domain';
+import { SourceRegionEditor } from './SourceRegionEditor';
 
 export interface ImportSourceManagerProps {
   bundle: ImportBundle | null;
@@ -56,6 +58,8 @@ export function ImportSourceManager({
   const [role, setRole] = useState<ImportSourceRole>('QUESTION_MATERIAL');
   const [startPage, setStartPage] = useState('1');
   const [endPage, setEndPage] = useState('1');
+  const [region, setRegion] = useState<NormalizedRect | undefined>(undefined);
+  const [regionEditorOpen, setRegionEditorOpen] = useState(false);
 
   const effectiveSourceDocumentId =
     sourceDocumentId || bundle?.sourceDocuments[0]?.id || '';
@@ -88,6 +92,7 @@ export function ImportSourceManager({
         selectedSource.kind === 'PDF'
           ? [{ startPage: start, endPage: end }]
           : undefined,
+      ...(region ? { region } : {}),
     });
   }
 
@@ -187,7 +192,11 @@ export function ImportSourceManager({
             <select
               aria-label="Source file"
               value={effectiveSourceDocumentId}
-              onChange={(event) => setSourceDocumentId(event.target.value)}
+              onChange={(event) => {
+                setSourceDocumentId(event.target.value);
+                setRegion(undefined);
+                setRegionEditorOpen(false);
+              }}
             >
               {bundle.sourceDocuments.map((source) => (
                 <option key={source.id} value={source.id}>{source.name}</option>
@@ -230,7 +239,11 @@ export function ImportSourceManager({
                   type="number"
                   min="1"
                   value={startPage}
-                  onChange={(event) => setStartPage(event.target.value)}
+                  onChange={(event) => {
+                    setStartPage(event.target.value);
+                    setRegion(undefined);
+                    setRegionEditorOpen(false);
+                  }}
                 />
               </label>
               <label>
@@ -240,16 +253,62 @@ export function ImportSourceManager({
                   type="number"
                   min="1"
                   value={endPage}
-                  onChange={(event) => setEndPage(event.target.value)}
+                  onChange={(event) => {
+                    setEndPage(event.target.value);
+                    setRegion(undefined);
+                    setRegionEditorOpen(false);
+                  }}
                 />
               </label>
             </>
           ) : null}
 
+          {selectedSource &&
+          (selectedSource.kind === 'PDF' || selectedSource.kind === 'IMAGE') ? (
+            <button
+              type="button"
+              className="secondary-action"
+              disabled={
+                selectedSource.kind === 'PDF' &&
+                (Number(startPage) !== Number(endPage) ||
+                  !Number.isInteger(Number(startPage)) ||
+                  Number(startPage) < 1)
+              }
+              onClick={() => setRegionEditorOpen(true)}
+            >
+              {region ? 'Edit region' : 'Select region'}
+            </button>
+          ) : null}
+
+          {region ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => setRegion(undefined)}
+            >
+              Use whole page
+            </button>
+          ) : null}
+
           <button type="button" className="secondary-action" onClick={assignPages}>
-            Assign pages
+            Assign {region ? 'region' : 'pages'}
           </button>
         </div>
+      ) : null}
+
+      {regionEditorOpen && selectedSource ? (
+        <SourceRegionEditor
+          source={selectedSource}
+          pageNumber={
+            selectedSource.kind === 'PDF' ? Math.max(1, Number(startPage) || 1) : 1
+          }
+          initialRegion={region}
+          onCancel={() => setRegionEditorOpen(false)}
+          onConfirm={(nextRegion) => {
+            setRegion(nextRegion);
+            setRegionEditorOpen(false);
+          }}
+        />
       ) : null}
 
       {bundle.assignments.length > 0 ? (
@@ -265,7 +324,10 @@ export function ImportSourceManager({
             return (
               <div key={`${assignment.sourceDocumentId}-${assignment.role}-${index}`}>
                 <strong>{source?.name ?? 'Source'}</strong>
-                <span>{assignment.role}{ranges ? ` · ${ranges}` : ''}</span>
+                <span>
+                  {assignment.role}{ranges ? ` · ${ranges}` : ''}
+                  {assignment.region ? ' · selected region' : ''}
+                </span>
                 {onRemoveAssignment ? (
                   <button
                     type="button"

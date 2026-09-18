@@ -1,6 +1,7 @@
 import type { ImportFileProcessor } from './ImportWorkspace';
 import { parseAnswerKey, type AnswerKeyParseResult } from './answer-key/parse-answer-key';
 import type { NormalizedRect, VerificationResult } from './domain';
+import type { ImportSourceRole } from './bundle/domain';
 import type {
   ImportDraft,
   ImportFieldRecord,
@@ -20,6 +21,18 @@ import {
 
 type PdfExtractor = (data: ArrayBuffer) => Promise<ExtractedPdfPage[]>;
 type AnswerKeyExtractor = (text: string) => AnswerKeyParseResult;
+
+export interface ImportRegionExtractionResult {
+  field: ImportFieldRecord;
+  visualAsset?: ImportVisualAssetRecord;
+}
+
+export type ImportRegionProcessor = (input: {
+  source: SourceDocumentRecord;
+  pageNumber: number;
+  region: NormalizedRect;
+  role: ImportSourceRole;
+}) => Promise<ImportRegionExtractionResult>;
 
 export interface LocalImportProcessorOptions {
   extractPdf?: PdfExtractor;
@@ -370,6 +383,128 @@ function normalizeAnswerKeySource(file: File, text: string): string {
   }
 
   return text;
+}
+
+
+function sourceBlob(source: SourceDocumentRecord): Blob {
+  if (!source.sourceBytes) {
+    throw new Error('The original source bytes are unavailable for region extraction');
+  }
+  return new Blob([source.sourceBytes.slice(0)], {
+    type: source.mediaType || 'application/octet-stream',
+  });
+}
+
+async function loadImageElement(blob: Blob): Promise<HTMLImageElement> {
+  if (typeof document === 'undefined' || typeof Image === 'undefined') {
+    throw new Error('Source-region cropping requires browser image APIs');
+  }
+
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Unable to decode source image'));
+      image.src = url;
+    });
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function cropImageBlob(imageBlob: Blob, region: NormalizedRect): Promise<Blob> {
+  const image = await loadImageElement(imageBlob);
+  const sourceWidth = Math.max(1, image.naturalWidth || image.width);
+  const sourceHeight = Math.max(1, image.naturalHeight || image.height);
+
+  const sx = Math.max(0, Math.floor(region.x * sourceWidth));
+  const sy = Math.max(0, Math.floor(region.y * sourceHeight));
+  const sw = Math.max(1, Math.min(sourceWidth - sx, Math.ceil(region.width * sourceWidth)));
+  const sh = Math.max(1, Math.min(sourceHeight - sy, Math.ceil(region.height * sourceHeight)));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = sw;
+  canvas.height = sh;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    throw new Error('Unable to create a source-region crop canvas');
+  }
+
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Unable to encode the selected source region'));
+    }, 'image/png');
+  });
+}
+
+export function createLocalRegionProcessor(
+  options: LocalImportProcessorOptions = {},
+): ImportRegionProcessor {
+  const pdfPageRenderer = options.renderPdfPage ?? renderPdfPageImage;
+  const ocrEngine = options.ocrEngine ?? new TesseractOcrEngine();
+  const createId = options.createId ?? defaultCreateId;
+
+  return async ({ source, pageNumber, region, role }) => {
+    let pageImage: Blob;
+
+    if (source.kind === 'PDF') {
+      if (!source.sourceBytes) {
+        throw new Error('The original PDF bytes are unavailable for region extraction');
+      }
+      pageImage = await pdfPageRenderer(source.sourceBytes.slice(0), pageNumber);
+    } else if (source.kind === 'IMAGE') {
+      pageImage = sourceBlob(source);
+    } else {
+      throw new Error('Precise region selection is only available for PDF and image sources');
+    }
+
+    const cropped = await cropImageBlob(pageImage, region);
+    const verification = await runTwoPassOcr(cropped, ocrEngine, {
+      documentId: source.id,
+      pageNumber,
+      region,
+    });
+    const extractedText =
+      verification.normalizedValue ??
+      verification.passA?.value ??
+      verification.passB?.value ??
+      '';
+
+    const visualKind = visualKindForPdfText(extractedText);
+    const field: ImportFieldRecord = {
+      id: `region-${source.id}-${pageNumber}-${createId()}`,
+      kind:
+        role === 'ANSWER_KEY'
+          ? 'ANSWER'
+          : role === 'QUESTION_MATERIAL'
+            ? 'PASSAGE_TEXT'
+            : 'OTHER',
+      critical: role === 'QUESTION_MATERIAL' || role === 'ANSWER_KEY',
+      verification,
+      sourceRegion: region,
+    };
+
+    const visualAsset = visualKind
+      ? {
+          id: `visual-region-${source.id}-${pageNumber}-${createId()}`,
+          sourceDocumentId: source.id,
+          pageNumber,
+          kind: visualKind,
+          mediaType: cropped.type || 'image/png',
+          dataUrl: await blobToDataUrl(cropped),
+          crop: region,
+        } satisfies ImportVisualAssetRecord
+      : undefined;
+
+    return {
+      field,
+      ...(visualAsset ? { visualAsset } : {}),
+    };
+  };
 }
 
 export function createLocalImportProcessor(
