@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { StudentTestPackage } from '../test-schema/types';
 import {
   summarizeStudentTest,
@@ -14,22 +15,50 @@ interface QueryResult<T> {
   error: QueryError | null;
 }
 
-interface SupabaseFilterChain {
-  eq(column: string, value: unknown): SupabaseFilterChain;
-  not(column: string, operator: string, value: unknown): SupabaseFilterChain;
-  order(
-    column: string,
-    options?: { ascending?: boolean },
-  ): PromiseLike<QueryResult<unknown[]>>;
-  maybeSingle(): PromiseLike<QueryResult<unknown>>;
+export interface SupabaseCatalogDataSource {
+  listPublishedRows(): Promise<QueryResult<unknown[]>>;
+  loadPublishedRow(
+    testId: string,
+    versionId: string,
+  ): Promise<QueryResult<unknown>>;
 }
 
-interface SupabaseQueryBuilder {
-  select(columns: string): SupabaseFilterChain;
-}
+export function createSupabaseCatalogDataSource(
+  client: SupabaseClient,
+): SupabaseCatalogDataSource {
+  return {
+    async listPublishedRows() {
+      const { data, error } = await client
+        .from('test_versions')
+        .select(
+          'id,test_id,version_number,published_at,content,tests!inner(id,title,status)',
+        )
+        .not('published_at', 'is', null)
+        .eq('tests.status', 'published')
+        .order('version_number', { ascending: false });
 
-export interface SupabaseCatalogClient {
-  from(table: string): SupabaseQueryBuilder;
+      return {
+        data: data as unknown[] | null,
+        error: error ? { message: error.message } : null,
+      };
+    },
+
+    async loadPublishedRow(testId: string, versionId: string) {
+      const { data, error } = await client
+        .from('test_versions')
+        .select('id,test_id,published_at,content,tests!inner(status)')
+        .eq('id', versionId)
+        .eq('test_id', testId)
+        .not('published_at', 'is', null)
+        .eq('tests.status', 'published')
+        .maybeSingle();
+
+      return {
+        data: data as unknown,
+        error: error ? { message: error.message } : null,
+      };
+    },
+  };
 }
 
 interface VersionRow {
@@ -101,20 +130,10 @@ function publishedRow(value: unknown): VersionRow | null {
 }
 
 export class SupabaseTestCatalog implements TestCatalogRepository {
-  constructor(private readonly client: SupabaseCatalogClient) {}
+  constructor(private readonly source: SupabaseCatalogDataSource) {}
 
   async listPublishedTests(): Promise<TestSummary[]> {
-    const query = this.client
-      .from('test_versions')
-      .select(
-        'id,test_id,version_number,published_at,content,tests!inner(id,title,status)',
-      )
-      .not('published_at', 'is', null)
-      .eq('tests.status', 'published');
-
-    const { data, error } = await query.order('version_number', {
-      ascending: false,
-    });
+    const { data, error } = await this.source.listPublishedRows();
 
     if (error) {
       throw new Error(`Unable to list published tests: ${error.message}`);
@@ -142,17 +161,10 @@ export class SupabaseTestCatalog implements TestCatalogRepository {
     testId: string,
     versionId: string,
   ): Promise<StudentTestPackage> {
-    const query = this.client
-      .from('test_versions')
-      .select(
-        'id,test_id,published_at,content,tests!inner(status)',
-      )
-      .eq('id', versionId)
-      .eq('test_id', testId)
-      .not('published_at', 'is', null)
-      .eq('tests.status', 'published');
-
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await this.source.loadPublishedRow(
+      testId,
+      versionId,
+    );
 
     if (error) {
       throw new Error(`Unable to load published test: ${error.message}`);
