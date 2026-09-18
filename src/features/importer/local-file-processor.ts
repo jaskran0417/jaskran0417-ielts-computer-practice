@@ -87,6 +87,7 @@ function sourceRecord(
     sizeBytes: file.size,
     kind,
     createdAtMs,
+    sourceBlob: file.slice(0, file.size, file.type || 'application/octet-stream'),
   };
 }
 
