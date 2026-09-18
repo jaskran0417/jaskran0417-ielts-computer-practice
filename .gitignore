@@ -5,3 +5,5 @@ public/ocr/
 .env.local
 coverage/
 .DS_Store
+# Local Netlify folder
+.netlify

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
 import type {
   ExamAttemptState,
@@ -28,9 +28,11 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
   const { state, dispatch } = useExam();
   const [nowMs, setNowMs] = useState(() => now());
   const [pendingSelection, setPendingSelection] = useState<PassageTextRange | null>(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const submittingRef = useRef(false);
   const passageCopyRef = useRef<HTMLDivElement | null>(null);
   const annotationSequenceRef = useRef(0);
+  const keepWorkingButtonRef = useRef<HTMLButtonElement | null>(null);
   const readingModule = test.modules[0];
   const assetUrlById = Object.fromEntries(
     (test.assets ?? []).map((asset) => [asset.id, asset.url]),
@@ -73,6 +75,20 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
 
   const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
   const timeLeft = remainingSeconds(state, nowMs);
+  const timeUrgency =
+    state.durationSeconds > 0 && timeLeft / state.durationSeconds <= 0.1
+      ? 'critical'
+      : state.durationSeconds > 0 && timeLeft / state.durationSeconds <= 0.25
+        ? 'warning'
+        : null;
+  const unansweredCount = useMemo(
+    () =>
+      allQuestions.filter((question) => {
+        const answer = state.answers[question.id];
+        return answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
+      }).length,
+    [allQuestions, state.answers],
+  );
   const passageHighlights = state.highlights.filter(
     (highlight) => highlight.passageId === activeSection.passage.id,
   );
@@ -169,6 +185,25 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
     }
   }, [nowMs, state.status, timeLeft]);
 
+  useEffect(() => {
+    if (showSubmitConfirm) {
+      keepWorkingButtonRef.current?.focus();
+    }
+  }, [showSubmitConfirm]);
+
+  useEffect(() => {
+    if (!showSubmitConfirm) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setShowSubmitConfirm(false);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSubmitConfirm]);
+
   return (
     <main className="exam-shell">
       <header className="exam-header">
@@ -176,7 +211,10 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
           <span className="exam-kicker">Computer Test Practice</span>
           <h1>{readingModule.title}</h1>
         </div>
-        <div className="timer" aria-label={`${timeLeft} seconds remaining`}>
+        <div
+          className={`timer${timeUrgency ? ` timer-${timeUrgency}` : ''}`}
+          aria-label={`${timeLeft} seconds remaining`}
+        >
           <span>Time remaining</span>
           <strong>{formatTime(timeLeft)}</strong>
         </div>
@@ -289,12 +327,51 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
             type="button"
             className="primary-action"
             disabled={state.status !== 'ACTIVE'}
-            onClick={() => void submitTest(now())}
+            onClick={() => setShowSubmitConfirm(true)}
           >
             Submit test
           </button>
         </div>
       </footer>
+
+      {showSubmitConfirm ? (
+        <div className="submit-confirm-overlay">
+          <div
+            className="submit-confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="submit-confirm-title"
+            aria-describedby="submit-confirm-body"
+          >
+            <h2 id="submit-confirm-title">Submit this test?</h2>
+            <p id="submit-confirm-body">
+              {unansweredCount > 0
+                ? `You have ${unansweredCount} unanswered ${unansweredCount === 1 ? 'question' : 'questions'}. Once submitted, you can no longer change any answers.`
+                : 'All questions are answered. Once submitted, you can no longer change any answers.'}
+            </p>
+            <div className="submit-confirm-actions">
+              <button
+                type="button"
+                className="secondary-action"
+                ref={keepWorkingButtonRef}
+                onClick={() => setShowSubmitConfirm(false)}
+              >
+                Keep working
+              </button>
+              <button
+                type="button"
+                className="primary-action"
+                onClick={() => {
+                  setShowSubmitConfirm(false);
+                  void submitTest(now());
+                }}
+              >
+                Submit test now
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

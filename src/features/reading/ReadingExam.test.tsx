@@ -32,10 +32,14 @@ class SavedAttemptRepository extends EmptyAttemptRepository {
   }
 }
 
-function renderReading(repository: AttemptRepository, nowMs?: number) {
+function renderReading(
+  repository: AttemptRepository,
+  nowMs?: number,
+  onSubmit?: (attempt: ExamAttemptState) => void,
+) {
   return render(
     <ExamProvider test={sampleReadingTest} repository={repository} nowMs={nowMs}>
-      <ReadingExam test={sampleReadingTest} />
+      <ReadingExam test={sampleReadingTest} onSubmit={onSubmit} />
     </ExamProvider>,
   );
 }
@@ -169,5 +173,28 @@ describe('Reading exam', () => {
 
     expect(screen.getByText('00:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark question 1 for review' })).toBeDisabled();
+  });
+
+  it('asks for confirmation before submitting and only submits once confirmed', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    renderReading(new EmptyAttemptRepository(), undefined, onSubmit);
+
+    await user.click(await screen.findByRole('button', { name: 'Submit test' }));
+
+    expect(
+      screen.getByRole('alertdialog', { name: 'Submit this test?' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/4 unanswered questions/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Keep working' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Submit test' }));
+    await user.click(screen.getByRole('button', { name: 'Submit test now' }));
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });
