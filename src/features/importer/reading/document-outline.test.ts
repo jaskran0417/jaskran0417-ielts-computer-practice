@@ -94,6 +94,28 @@ describe('parseReadingDocumentOutline', () => {
     expect(outline.questionRanges[1]?.instructionText).not.toContain('correct ending A-I');
   });
 
+
+  it('ignores parenthetical references to an already-declared question range', () => {
+    const outline = parseReadingDocumentOutline([
+      {
+        pageNumber: 12,
+        text: [
+          'Questions 37-40',
+          'Look at the information below (Questions 37-40) and the list of people below.',
+          'Match each piece of information with the correct person A-E.',
+          '37. Assisted Columbus in getting money for his voyage.',
+          '40. Finally conquered the Iberian Peninsula.',
+        ].join('\n'),
+        evidence: [],
+      },
+    ]);
+
+    expect(outline.questionRanges.map((range) => [range.start, range.end])).toEqual([
+      [37, 40],
+    ]);
+    expect(outline.issues).toEqual([]);
+  });
+
   it('does not treat an instruction sentence that starts with Passage 3 as a passage heading', () => {
     const outline = parseReadingDocumentOutline([
       {

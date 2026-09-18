@@ -95,4 +95,29 @@ describe('parseAnswerKey', () => {
     ]);
   });
 
+  it('keeps the final numbered answer separate from the supplied PDF footer', () => {
+    const result = parseAnswerKey([
+      'Answers',
+      '37. D',
+      '38. A',
+      '39. E',
+      '40. C',
+      'Note: This is not a real IELTS test. This practice test is for strategy practice.',
+    ].join('\n'));
+
+    expect(result.answers).toEqual([
+      { questionNumber: 37, answer: 'D' },
+      { questionNumber: 38, answer: 'A' },
+      { questionNumber: 39, answer: 'E' },
+      { questionNumber: 40, answer: 'C' },
+    ]);
+    expect(result.verification.map((item) => item.result.state)).toEqual([
+      'VERIFIED',
+      'VERIFIED',
+      'VERIFIED',
+      'VERIFIED',
+    ]);
+  });
+
+
 });

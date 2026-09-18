@@ -24,10 +24,28 @@ export interface AnswerKeyParserOptions {
 }
 
 function stripAnswerCommentary(text: string): string {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+Extra\s+info\b.*$/i, '').trimEnd())
-    .join('\n');
+  const lines: string[] = [];
+  let sawNumberedAnswer = false;
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = rawLine.trim();
+
+    if (/^\d{1,3}[.)]?\s+/.test(trimmed)) {
+      sawNumberedAnswer = true;
+    }
+
+    if (
+      sawNumberedAnswer &&
+      (/^Note\s*:/i.test(trimmed) ||
+        /^After you(?:['’])?ve tried\b/i.test(trimmed))
+    ) {
+      break;
+    }
+
+    lines.push(rawLine.replace(/\s+Extra\s+info\b.*$/i, '').trimEnd());
+  }
+
+  return lines.join('\n');
 }
 
 function parseEntriesWithinLine(line: string): ParsedAnswer[] {
