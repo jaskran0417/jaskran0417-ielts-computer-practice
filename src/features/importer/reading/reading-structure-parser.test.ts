@@ -52,7 +52,7 @@ describe('parseReadingStructure', () => {
       'DIAGRAM_LABEL_COMPLETION',
       'SENTENCE_COMPLETION',
       null,
-      'SENTENCE_COMPLETION',
+      null,
       null,
       'SINGLE_CHOICE',
       'TABLE_COMPLETION',
