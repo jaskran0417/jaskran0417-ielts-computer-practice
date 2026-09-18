@@ -103,6 +103,27 @@ describe('ImportSourceManager', () => {
     expect(onScoringModeChange).toHaveBeenCalledWith('MANUAL');
   });
 
+  it('clears all imported sources through an explicit clear action', async () => {
+    const user = userEvent.setup();
+    const onClearSources = vi.fn();
+
+    render(
+      <ImportSourceManager
+        bundle={readingBundle()}
+        onCreate={vi.fn()}
+        onAddFiles={vi.fn()}
+        onAssign={vi.fn()}
+        onClearSources={onClearSources}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Clear all imported sources' }),
+    );
+
+    expect(onClearSources).toHaveBeenCalledTimes(1);
+  });
+
   it('accepts multiple source files for one import bundle', async () => {
     const user = userEvent.setup();
     const onAddFiles = vi.fn();
