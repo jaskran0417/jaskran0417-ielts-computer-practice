@@ -74,6 +74,7 @@ describe('createLocalImportProcessor', () => {
         evidence: {
           pageNumber: 1,
           method: 'PDF_TEXT',
+          region: { x: 0.1, y: 0.1, width: 0.5, height: 0.15 },
         },
       });
       expect(draft.fields[0].verification.passA?.evidence.documentId).toBe(
