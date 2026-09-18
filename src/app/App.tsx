@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AttemptRepository } from '../storage/attempt-repository';
 import { ExamProvider } from '../features/exam/ExamProvider';
 import type { ImportFileProcessor } from '../features/importer/ImportWorkspace';
@@ -7,15 +7,20 @@ import { createLocalImportProcessor } from '../features/importer/local-file-proc
 import { ReadingExam } from '../features/reading/ReadingExam';
 import { SessionBuilder } from '../features/sessions/SessionBuilder';
 import { IndexedDbSessionRepository } from '../session/indexeddb-session-repository';
+import { isSupabaseConfigured, supabase } from '../database/supabase';
 import type { SessionRepository } from '../session/session-repository';
 import type { SessionConfig, SessionModule } from '../session/types';
-import { sampleReadingTest } from '../test-schema/sample-reading';
+import { IndexedDbTestCatalog } from '../test-catalog/indexeddb-test-catalog';
+import { SupabaseTestCatalog } from '../test-catalog/supabase-test-catalog';
+import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
+import type { StudentTestPackage } from '../test-schema/types';
 import { AppShell, type AppShellNavItem } from './AppShell';
 
 interface AppProps {
   repository?: AttemptRepository;
   sessionRepository?: SessionRepository;
   importProcessor?: ImportFileProcessor;
+  testCatalog?: TestCatalogRepository;
   nowMs?: number;
 }
 
@@ -36,20 +41,66 @@ export default function App({
   repository,
   sessionRepository,
   importProcessor,
+  testCatalog,
   nowMs,
 }: AppProps) {
   const defaultSessionRepository = useMemo(() => new IndexedDbSessionRepository(), []);
   const defaultImportProcessor = useMemo(() => createLocalImportProcessor(), []);
+  const defaultTestCatalog = useMemo<TestCatalogRepository>(() => {
+    if (isSupabaseConfigured && supabase) {
+      return new SupabaseTestCatalog(supabase);
+    }
+    return new IndexedDbTestCatalog();
+  }, []);
   const sessions = sessionRepository ?? defaultSessionRepository;
+  const catalog = testCatalog ?? defaultTestCatalog;
   const [session, setSession] = useState<SessionConfig | null>(null);
+  const [activeTest, setActiveTest] = useState<StudentTestPackage | null>(null);
+  const [publishedTests, setPublishedTests] = useState<TestSummary[]>([]);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('sessions');
 
-  function createSession(config: SessionConfig) {
-    setSession(config);
-    void sessions.saveSession(config).catch(() => {
-      // The session remains usable if persistence fails. A dedicated storage
-      // status surface will report local persistence failures in a later slice.
-    });
+  useEffect(() => {
+    let cancelled = false;
+    void catalog
+      .listPublishedTests()
+      .then((tests) => {
+        if (!cancelled) {
+          setPublishedTests(tests);
+          setCatalogError(null);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setCatalogError(
+            cause instanceof Error ? cause.message : 'Unable to load published tests',
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [catalog]);
+
+  async function createSession(config: SessionConfig) {
+    try {
+      const test = await catalog.loadPublishedTest(
+        config.testId,
+        config.testVersionId,
+      );
+      setActiveTest(test);
+      setSession(config);
+      setCatalogError(null);
+      void sessions.saveSession(config).catch(() => {
+        // The session remains usable if persistence fails. A dedicated storage
+        // status surface will report local persistence failures in a later slice.
+      });
+    } catch (cause) {
+      setCatalogError(
+        cause instanceof Error ? cause.message : 'Unable to load the selected test',
+      );
+    }
   }
 
   function navigateWorkspace(sectionId: string) {
@@ -68,12 +119,18 @@ export default function App({
         {activeSection === 'import' ? (
           <ImportWorkspaceContainer processFile={importProcessor ?? defaultImportProcessor} />
         ) : (
-          <SessionBuilder
-            testId={sampleReadingTest.id}
-            testVersionId={sampleReadingTest.versionId}
-            nowMs={nowMs}
-            onCreate={createSession}
-          />
+          <>
+            {catalogError ? (
+              <div className="import-error" role="alert">
+                {catalogError}
+              </div>
+            ) : null}
+            <SessionBuilder
+              tests={publishedTests}
+              nowMs={nowMs}
+              onCreate={(config) => void createSession(config)}
+            />
+          </>
         )}
       </AppShell>
     );
@@ -113,9 +170,19 @@ export default function App({
     );
   }
 
+  if (!activeTest) {
+    return (
+      <AppShell>
+        <section className="setup-panel" role="status">
+          Loading selected test…
+        </section>
+      </AppShell>
+    );
+  }
+
   return (
-    <ExamProvider test={sampleReadingTest} repository={repository} nowMs={nowMs}>
-      <ReadingExam test={sampleReadingTest} />
+    <ExamProvider test={activeTest} repository={repository} nowMs={nowMs}>
+      <ReadingExam test={activeTest} />
     </ExamProvider>
   );
 }
