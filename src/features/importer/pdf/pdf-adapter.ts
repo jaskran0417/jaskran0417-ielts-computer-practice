@@ -1,3 +1,4 @@
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import type { NormalizedRect } from '../domain';
 import { classifyPdfPage, type PdfPageKind, type PdfPageSignals } from '../source-classifier';
 
@@ -45,6 +46,8 @@ export interface PdfDocumentLoader {
   load(data: Uint8Array): Promise<PdfDocumentLike>;
 }
 
+export const bundledPdfWorkerUrl = pdfWorkerUrl;
+
 const pdfJsImageOperatorCodes = new Set<number>();
 
 export const pdfJsLegacyLoader: PdfDocumentLoader = {
@@ -52,10 +55,7 @@ export const pdfJsLegacyLoader: PdfDocumentLoader = {
   async load(data: Uint8Array): Promise<PdfDocumentLike> {
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString();
+    pdfjs.GlobalWorkerOptions.workerSrc = bundledPdfWorkerUrl;
 
     pdfJsImageOperatorCodes.clear();
     pdfJsImageOperatorCodes.add(pdfjs.OPS.paintImageXObject);
