@@ -254,4 +254,119 @@ describe('ImportWorkspace', () => {
     expect(screen.queryByRole('heading', { name: 'Fields to review' })).not.toBeInTheDocument();
   });
 
+
+  it('passes retained PDF visuals into the live Reading conversion model', () => {
+    const source = {
+      id: 'visual-reading-source',
+      name: 'visual-reading.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 2048,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'visual-bundle',
+      module: 'READING',
+      title: 'Visual Reading Test',
+      sourceDocuments: [source],
+      assignments: [
+        {
+          sourceDocumentId: source.id,
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 3 }],
+        },
+        {
+          sourceDocumentId: source.id,
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 4, endPage: 4 }],
+        },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 10,
+    };
+    const draft: ImportDraft = {
+      id: 'visual-draft',
+      testId: 'visual-test',
+      sourceDocuments: [source],
+      visualAssets: [
+        {
+          id: 'diagram-page-3',
+          sourceDocumentId: source.id,
+          pageNumber: 3,
+          kind: 'DIAGRAM',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,cGFnZQ==',
+          crop: { x: 0, y: 0, width: 1, height: 1 },
+        },
+      ],
+      fields: [
+        {
+          id: 'visual-page-1',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: ['Passage 1', 'Visual Passage', 'The corona is the outer layer.'].join('\n'),
+            reasons: [],
+            passA: {
+              value: ['Passage 1', 'Visual Passage', 'The corona is the outer layer.'].join('\n'),
+              confidence: null,
+              evidence: { documentId: source.id, pageNumber: 1, method: 'PDF_TEXT' },
+            },
+          },
+        },
+        {
+          id: 'visual-page-3',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: [
+              'Questions 1-1',
+              'Label the diagram below.',
+              'Choose NO MORE THAN TWO WORDS from the reading passage for each answer.',
+            ].join('\n'),
+            reasons: [],
+            passA: {
+              value: [
+                'Questions 1-1',
+                'Label the diagram below.',
+                'Choose NO MORE THAN TWO WORDS from the reading passage for each answer.',
+              ].join('\n'),
+              confidence: null,
+              evidence: { documentId: source.id, pageNumber: 3, method: 'PDF_TEXT' },
+            },
+          },
+        },
+        {
+          id: 'visual-page-4',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: '1. corona',
+            reasons: [],
+            passA: {
+              value: '1. corona',
+              confidence: null,
+              evidence: { documentId: source.id, pageNumber: 4, method: 'PDF_TEXT' },
+            },
+          },
+        },
+      ],
+      updatedAtMs: 10,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    expect(screen.getByText('Question 1 visual anchor')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 accepted answer')).toBeInTheDocument();
+    expect(screen.queryByText(/Question type for 1-1 requires review/)).not.toBeInTheDocument();
+  });
 });
