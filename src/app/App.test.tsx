@@ -46,7 +46,7 @@ describe('App session flow', () => {
     await user.click(screen.getByRole('button', { name: /Import/i }));
     await user.upload(
       screen.getByLabelText('Choose source file'),
-      new File(['1 library\\n2 B\\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
+      new File(['1 library\n2 B\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
     );
 
     expect(await screen.findByText('answers.txt')).toBeInTheDocument();
