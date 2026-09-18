@@ -135,17 +135,16 @@ export function ImportWorkspace({
   const unresolvedCriticalCount =
     draft?.fields.filter((field) => !isResolved(field)).length ?? 0;
 
+  const hasQuestionMaterial =
+    bundle?.assignments.some((assignment) => assignment.role === 'QUESTION_MATERIAL') ?? false;
+  const hasAnswerKey =
+    bundle?.assignments.some((assignment) => assignment.role === 'ANSWER_KEY') ?? false;
+  const scoringMode = bundle?.scoringMode ?? 'AUTO';
+
   const readingModel = useMemo(() => {
     if (!bundle || !draft || bundle.module !== 'READING') return null;
 
-    const hasQuestionMaterial = bundle.assignments.some(
-      (assignment) => assignment.role === 'QUESTION_MATERIAL',
-    );
-    const hasAnswerKey = bundle.assignments.some(
-      (assignment) => assignment.role === 'ANSWER_KEY',
-    );
-
-    if (!hasQuestionMaterial || !hasAnswerKey) return null;
+    if (!hasQuestionMaterial) return null;
 
     const visualRegions = (draft.visualAssets ?? []).map((asset) => ({
       id: asset.id,
@@ -160,10 +159,12 @@ export function ImportWorkspace({
       draft,
       visualRegions,
     });
-  }, [bundle, draft]);
+  }, [bundle, draft, hasQuestionMaterial]);
 
+  const sourceBlockingCount =
+    readingModel?.sourceBlockingFieldIds.length ?? unresolvedCriticalCount;
   const showStructuredReadingReview =
-    readingModel !== null && unresolvedCriticalCount === 0;
+    readingModel !== null && sourceBlockingCount === 0;
   const semanticBlockingCount =
     showStructuredReadingReview
       ? readingModel.semanticReviewItems.filter(
@@ -175,7 +176,43 @@ export function ImportWorkspace({
       : 0;
   const activeBlockingCount = showStructuredReadingReview
     ? semanticBlockingCount
-    : unresolvedCriticalCount;
+    : sourceBlockingCount;
+
+  const publishStatus = (() => {
+    if (!hasQuestionMaterial) {
+      return {
+        title: 'Question material required',
+        detail: 'Assign the source or PDF pages that contain the Reading passages and questions.',
+      };
+    }
+    if (scoringMode === 'AUTO' && !hasAnswerKey) {
+      return {
+        title: 'Answer key required for automatic scoring',
+        detail: 'Assign an answer-key source/page, or choose teacher/manual scoring or unscored practice.',
+      };
+    }
+    if (activeBlockingCount > 0) {
+      return {
+        title: `${activeBlockingCount} critical field${activeBlockingCount === 1 ? '' : 's'} still ${activeBlockingCount === 1 ? 'requires' : 'require'} review`,
+        detail: 'Publication stays blocked until every required critical field is verified or explicitly confirmed.',
+      };
+    }
+    if (!readingModel?.canPublish) {
+      return {
+        title: 'Test structure is not ready to publish',
+        detail: 'Review the converted Reading structure and resolve any remaining publication blockers.',
+      };
+    }
+    return {
+      title: 'Ready to publish',
+      detail:
+        scoringMode === 'AUTO'
+          ? 'All required question material and protected answers are resolved.'
+          : scoringMode === 'MANUAL'
+            ? 'This test will publish for teacher/manual scoring; an answer key is optional.'
+            : 'This test will publish as unscored practice; an answer key is optional.',
+    };
+  })();
 
   function createBundle(module: ImportModule, title: string) {
     const nowMs = Date.now();
@@ -185,6 +222,7 @@ export function ImportWorkspace({
       title,
       sourceDocuments: [],
       assignments: [],
+      ...(module === 'READING' ? { scoringMode: 'AUTO' as const } : {}),
       status: 'COLLECTING_SOURCES',
       updatedAtMs: nowMs,
     };
@@ -299,6 +337,18 @@ export function ImportWorkspace({
     }
   }
 
+  function changeScoringMode(mode: 'AUTO' | 'MANUAL' | 'UNSCORED') {
+    if (!bundle) return;
+    const nextBundle: ImportBundle = {
+      ...bundle,
+      scoringMode: mode,
+      updatedAtMs: Date.now(),
+    };
+    setBundle(nextBundle);
+    setError(null);
+    onBundleChange?.(nextBundle);
+  }
+
   function assignRole(assignment: ImportSourceAssignment) {
     if (!bundle) return;
 
@@ -369,6 +419,7 @@ export function ImportWorkspace({
       reviewItems: readingModel.semanticReviewItems,
       visualAnchors: readingModel.visualAnchors,
       visualAssets,
+      scoringMode,
     });
 
     if (!prepared.ok) {
@@ -435,6 +486,7 @@ export function ImportWorkspace({
         onRemoveSource={removeSource}
         onRemoveAssignment={removeAssignment}
         onClearImport={() => void clearImport()}
+        onScoringModeChange={changeScoringMode}
       />
 
       {isImporting ? (
@@ -475,7 +527,7 @@ export function ImportWorkspace({
             </div>
             <div>
               <span>Blocking</span>
-              <strong>{unresolvedCriticalCount}</strong>
+              <strong>{activeBlockingCount}</strong>
             </div>
           </div>
 
@@ -669,24 +721,19 @@ export function ImportWorkspace({
 
           <footer className="import-publish-bar">
             <div role="status">
-              {activeBlockingCount === 0 ? (
-                <strong>All critical imported fields are resolved</strong>
-              ) : (
-                <strong>
-                  {activeBlockingCount} critical field
-                  {activeBlockingCount === 1 ? '' : 's'} still{' '}
-                  {activeBlockingCount === 1 ? 'requires' : 'require'} review
-                </strong>
-              )}
-              <small>
-                Publication stays blocked until every critical field is verified or
-                explicitly confirmed.
-              </small>
+              <strong>{publishStatus.title}</strong>
+              <small>{publishStatus.detail}</small>
             </div>
             <button
               type="button"
               className="primary-action"
-              disabled={activeBlockingCount > 0 || isPublishing || !readingModel || !onPublish}
+              disabled={
+                activeBlockingCount > 0 ||
+                isPublishing ||
+                !readingModel ||
+                !readingModel.canPublish ||
+                !onPublish
+              }
               onClick={() => void publishReadingTest()}
             >
               {isPublishing ? 'Publishing…' : 'Publish imported test'}
