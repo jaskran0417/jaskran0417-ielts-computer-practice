@@ -8,6 +8,7 @@ import {
   fieldsToReadingBlocks,
 } from './reading-import-source-selection';
 import { buildStructuredReadingDraft } from './reading-structure-parser';
+import { linkVisualQuestions } from './visual-region-linker';
 import type { ImportedVisualRegion } from './types';
 
 function resolved(field: ImportFieldRecord): boolean {
@@ -48,6 +49,12 @@ export function buildReadingImportModel(input: {
   const questions = structuredDraft.sections.flatMap((section) =>
     section.questionGroups.flatMap((group) => group.questions),
   );
+  const visualLinking = linkVisualQuestions({
+    questions,
+    regions: input.visualRegions,
+  });
+  structuredDraft.reviewItems.push(...visualLinking.reviewItems);
+
   const answerCoverage = mapAnswersToQuestions({
     questions,
     answerEntries: answerEntriesFromAssignedFields(answerFields, questions),
@@ -70,6 +77,7 @@ export function buildReadingImportModel(input: {
     structuredDraft,
     answerCoverage,
     semanticReviewItems,
+    visualAnchors: visualLinking.anchors,
     sourceBlockingFieldIds,
     canPublish:
       questions.length > 0 &&
