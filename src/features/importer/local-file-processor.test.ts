@@ -200,6 +200,48 @@ describe('createLocalImportProcessor', () => {
     }
   });
 
+  it.each([
+    ['part-1.mp3', 'audio/mpeg'],
+    ['part-2.wav', 'audio/wav'],
+    ['part-3.m4a', 'audio/mp4'],
+  ])('retains %s as an audio source without OCR', async (name, type) => {
+    const engine: OcrEngine = {
+      async recognize() {
+        throw new Error('audio must not enter OCR');
+      },
+    };
+    const processor = createLocalImportProcessor({
+      ocrEngine: engine,
+      createId: idFactory(),
+      now: () => 3_500,
+    });
+
+    const draft = await processor(new File(['audio-bytes'], name, { type }));
+
+    expect(draft.fields).toEqual([]);
+    expect(draft.sourceDocuments).toEqual([
+      expect.objectContaining({
+        name,
+        kind: 'AUDIO',
+        mediaType: type,
+        sourceBytes: expect.any(ArrayBuffer),
+      }),
+    ]);
+    expect(new TextDecoder().decode(draft.sourceDocuments[0].sourceBytes))
+      .toBe('audio-bytes');
+  });
+
+  it('rejects an empty audio source', async () => {
+    const processor = createLocalImportProcessor({
+      createId: idFactory(),
+      now: () => 3_600,
+    });
+
+    await expect(
+      processor(new File([], 'empty.mp3', { type: 'audio/mpeg' })),
+    ).rejects.toThrow(/audio.*empty/i);
+  });
+
   it('rejects unsupported formats instead of guessing their content', async () => {
     const processor = createLocalImportProcessor({
       createId: idFactory(),
