@@ -5,12 +5,13 @@ import type {
   PassageTextRange,
 } from '../../exam-engine/types';
 import type { StudentTestPackage } from '../../test-schema/types';
-import { QuestionRenderer } from '../../question-types/QuestionRenderer';
 import { useExam } from '../exam/ExamProvider';
 import { PassageTools } from './PassageTools';
 import { segmentsForParagraph } from './passage-annotations';
 import { passageRangeFromSelection } from './passage-selection';
 import { QuestionNavigator } from './QuestionNavigator';
+import { ReadingQuestionGroup } from './ReadingQuestionGroup';
+import { readingGroupDisplayInstruction } from './reading-presentation';
 
 interface ReadingExamProps {
   test: StudentTestPackage;
@@ -29,6 +30,7 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
   const [nowMs, setNowMs] = useState(() => now());
   const [pendingSelection, setPendingSelection] = useState<PassageTextRange | null>(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [mobilePane, setMobilePane] = useState<'PASSAGE' | 'QUESTIONS'>('QUESTIONS');
   const submittingRef = useRef(false);
   const passageCopyRef = useRef<HTMLDivElement | null>(null);
   const annotationSequenceRef = useRef(0);
@@ -73,7 +75,7 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
     window.getSelection()?.removeAllRanges();
   }, [activeSection.passage.id]);
 
-  const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
+  const displayInstruction = readingGroupDisplayInstruction(activeGroup.instruction);
   const timeLeft = remainingSeconds(state, nowMs);
   const timeUrgency =
     state.durationSeconds > 0 && timeLeft / state.durationSeconds <= 0.1
@@ -220,7 +222,26 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
         </div>
       </header>
 
-      <section className="reading-workspace">
+      <nav className="mobile-pane-switcher" aria-label="Reading view">
+        <button
+          type="button"
+          aria-pressed={mobilePane === 'PASSAGE'}
+          className={mobilePane === 'PASSAGE' ? 'active' : ''}
+          onClick={() => setMobilePane('PASSAGE')}
+        >
+          Passage
+        </button>
+        <button
+          type="button"
+          aria-pressed={mobilePane === 'QUESTIONS'}
+          className={mobilePane === 'QUESTIONS' ? 'active' : ''}
+          onClick={() => setMobilePane('QUESTIONS')}
+        >
+          Questions
+        </button>
+      </nav>
+
+      <section className="reading-workspace" data-mobile-pane={mobilePane.toLowerCase()}>
         <article className="passage-pane" aria-label="Reading passage">
           <div className="pane-heading">
             <span>{activeSection.title}</span>
@@ -290,36 +311,39 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
         </article>
 
         <section className="questions-pane" aria-label="Questions">
-          <div className="question-instruction">{activeGroup.instruction}</div>
-          <div className="question-card">
-            <div className="question-title-row">
-              <h2>Question {activeQuestion.number}</h2>
-              <button
-                type="button"
-                className={`review-button${isReviewed ? ' active' : ''}`}
-                aria-label={`${isReviewed ? 'Unmark' : 'Mark'} question ${activeQuestion.number} for review`}
-                onClick={() => dispatch({ type: 'TOGGLE_REVIEW', questionId: activeQuestion.id })}
-                disabled={state.status !== 'ACTIVE'}
-              >
-                {isReviewed ? 'Marked for review' : 'Mark for review'}
-              </button>
-            </div>
-            <p className="question-prompt">{activeQuestion.prompt}</p>
-            <QuestionRenderer
-              question={activeQuestion}
-              value={state.answers[activeQuestion.id]}
-              disabled={state.status !== 'ACTIVE'}
-              assetUrlById={assetUrlById}
-              onChange={(value) =>
-                dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value })
-              }
-            />
-          </div>
+          <header className="question-group-header">
+            <strong>
+              Questions {activeGroup.questions[0]?.number ?? activeQuestion.number}–
+              {activeGroup.questions[activeGroup.questions.length - 1]?.number ?? activeQuestion.number}
+            </strong>
+            {displayInstruction ? <p>{displayInstruction}</p> : null}
+          </header>
+
+          <ReadingQuestionGroup
+            group={activeGroup}
+            activeQuestionId={activeQuestion.id}
+            answers={state.answers}
+            reviewQuestionIds={state.reviewQuestionIds}
+            disabled={state.status !== 'ACTIVE'}
+            assetUrlById={assetUrlById}
+            onNavigate={(questionId) =>
+              dispatch({ type: 'NAVIGATE', questionId })
+            }
+            onAnswer={(questionId, value) =>
+              dispatch({ type: 'ANSWER_CHANGED', questionId, value })
+            }
+            onToggleReview={(questionId) =>
+              dispatch({ type: 'TOGGLE_REVIEW', questionId })
+            }
+          />
         </section>
       </section>
 
       <footer className="exam-footer">
-        <QuestionNavigator questions={allQuestions} />
+        <QuestionNavigator
+          questions={allQuestions}
+          onNavigate={() => setMobilePane('QUESTIONS')}
+        />
         <div className="footer-status">
           <span className="status-key"><i className="answered-key" /> Answered</span>
           <span className="status-key"><i className="review-key" /> Review</span>
