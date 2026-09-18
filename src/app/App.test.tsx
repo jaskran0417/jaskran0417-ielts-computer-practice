@@ -34,7 +34,7 @@ describe('App session flow', () => {
 
     await user.click(screen.getByRole('button', { name: /Import/i }));
 
-    expect(screen.getByRole('heading', { name: 'Import test material' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Import test material' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Import/i })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: /Sessions/i })).not.toHaveAttribute('aria-current');
   });
@@ -45,7 +45,7 @@ describe('App session flow', () => {
 
     await user.click(screen.getByRole('button', { name: /Import/i }));
     await user.upload(
-      screen.getByLabelText('Choose source file'),
+      await screen.findByLabelText('Choose source file'),
       new File(['1 library\n2 B\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
     );
 
