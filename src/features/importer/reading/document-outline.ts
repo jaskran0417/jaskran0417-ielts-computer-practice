@@ -83,11 +83,12 @@ function collectQuestionRanges(
 
   for (const block of blocks) {
     QUESTION_RANGE.lastIndex = 0;
-    let match: RegExpExecArray | null;
+    const matches = [...block.text.matchAll(QUESTION_RANGE)];
 
-    while ((match = QUESTION_RANGE.exec(block.text)) !== null) {
-      const start = Number(match[1]);
-      const end = Number(match[2]);
+    for (let index = 0; index < matches.length; index += 1) {
+      const match = matches[index];
+      const start = Number(match?.[1]);
+      const end = Number(match?.[2]);
 
       if (
         !Number.isInteger(start) ||
@@ -99,11 +100,14 @@ function collectQuestionRanges(
         continue;
       }
 
+      const segmentStart = match?.index ?? 0;
+      const segmentEnd = matches[index + 1]?.index ?? block.text.length;
+
       ranges.push({
         start,
         end,
         pageNumbers: [block.pageNumber],
-        instructionText: block.text.trim(),
+        instructionText: block.text.slice(segmentStart, segmentEnd).trim(),
         evidence: [...block.evidence],
       });
     }
