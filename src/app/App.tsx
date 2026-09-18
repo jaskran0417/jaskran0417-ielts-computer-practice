@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { AttemptRepository } from '../storage/attempt-repository';
 import { ExamProvider } from '../features/exam/ExamProvider';
-import {
-  ImportWorkspace,
-  type ImportFileProcessor,
-} from '../features/importer/ImportWorkspace';
+import type { ImportFileProcessor } from '../features/importer/ImportWorkspace';
+import { ImportWorkspaceContainer } from '../features/importer/ImportWorkspaceContainer';
 import { createLocalImportProcessor } from '../features/importer/local-file-processor';
 import { ReadingExam } from '../features/reading/ReadingExam';
 import { SessionBuilder } from '../features/sessions/SessionBuilder';
@@ -68,7 +66,7 @@ export default function App({
         onNavigate={navigateWorkspace}
       >
         {activeSection === 'import' ? (
-          <ImportWorkspace processFile={importProcessor ?? defaultImportProcessor} />
+          <ImportWorkspaceContainer processFile={importProcessor ?? defaultImportProcessor} />
         ) : (
           <SessionBuilder
             testId={sampleReadingTest.id}
