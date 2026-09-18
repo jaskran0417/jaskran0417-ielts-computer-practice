@@ -156,7 +156,7 @@ describe('ImportWorkspaceContainer', () => {
     );
 
     expect(screen.getByText('Loading local import draft…')).toBeInTheDocument();
-    expect(await screen.findByRole('option', { name: 'restored-reading.pdf' })).toBeInTheDocument();
+    expect(await screen.findByText('restored-reading.pdf', { selector: '.import-summary-bar strong' })).toBeInTheDocument();
 
     const confirmedValue = screen.getByRole('textbox', { name: 'Confirmed value' });
     const user = userEvent.setup();
