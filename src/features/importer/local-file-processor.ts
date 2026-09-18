@@ -4,6 +4,7 @@ import type { NormalizedRect, VerificationResult } from './domain';
 import type {
   ImportDraft,
   ImportFieldRecord,
+  ImportVisualAssetRecord,
   SourceDocumentKind,
   SourceDocumentRecord,
 } from './local/import-repository';
@@ -86,6 +87,24 @@ function sourceRecord(
     createdAtMs,
     sourceBytes,
   };
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
+}
+
+function visualKindForPdfText(text: string): ImportVisualAssetRecord['kind'] | null {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (/\blabel\b.*\bdiagram\b|\bdiagram\b.*\blabel\b/i.test(normalized)) {
+    return 'DIAGRAM';
+  }
+  if (/\bcomplete\b.*\btable\b|\btable\b.*\bcomplete\b/i.test(normalized)) {
+    return 'TABLE';
+  }
+  return null;
 }
 
 function normalizedPdfText(page: ExtractedPdfPage): string {
@@ -376,6 +395,7 @@ export function createLocalImportProcessor(
     const originalSourceBytes = await readArrayBuffer(file);
     let kind: SourceDocumentKind;
     let fields: ImportFieldRecord[];
+    const visualAssets: ImportVisualAssetRecord[] = [];
 
     if (isPdf(file)) {
       kind = 'PDF';
@@ -390,9 +410,10 @@ export function createLocalImportProcessor(
 
       for (const page of pages) {
         let verification: VerificationResult;
+        let renderedPage: Blob | null = null;
 
         if (page.kind === 'LIKELY_SCAN') {
-          const renderedPage = await pdfPageRenderer(pdfData.slice(0), page.pageNumber);
+          renderedPage = await pdfPageRenderer(pdfData.slice(0), page.pageNumber);
           verification = await runTwoPassOcr(renderedPage, ocrEngine, {
             documentId: sourceId,
             pageNumber: page.pageNumber,
@@ -408,6 +429,22 @@ export function createLocalImportProcessor(
           critical: true,
           verification,
         });
+
+        const visualKind = visualKindForPdfText(
+          verification.normalizedValue ?? verification.passA?.value ?? '',
+        );
+        if (visualKind) {
+          renderedPage ??= await pdfPageRenderer(pdfData.slice(0), page.pageNumber);
+          visualAssets.push({
+            id: `visual-${sourceId}-${page.pageNumber}`,
+            sourceDocumentId: sourceId,
+            pageNumber: page.pageNumber,
+            kind: visualKind,
+            mediaType: renderedPage.type || 'image/png',
+            dataUrl: await blobToDataUrl(renderedPage),
+            crop: { x: 0, y: 0, width: 1, height: 1 },
+          });
+        }
       }
     } else if (isImage(file)) {
       kind = 'IMAGE';
@@ -453,6 +490,7 @@ export function createLocalImportProcessor(
       testId,
       sourceDocuments: [sourceRecord(file, sourceId, kind, createdAtMs, originalSourceBytes.slice(0))],
       fields,
+      ...(visualAssets.length > 0 ? { visualAssets } : {}),
       updatedAtMs: createdAtMs,
     };
   };
