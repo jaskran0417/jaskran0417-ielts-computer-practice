@@ -10,6 +10,19 @@ export interface DocumentOutlineResult {
 }
 
 const PASSAGE_PATTERN = /\bPassage\s+(\d+)\b/gi;
+const QUESTION_RANGE_PATTERN = /\bQuestions?\s+\d+\s*[-–—]\s*\d+\b/gi;
+
+function isQuestionInstructionReference(text: string, passageIndex: number): boolean {
+  const prefix = text.slice(0, passageIndex);
+  const pattern = new RegExp(QUESTION_RANGE_PATTERN.source, QUESTION_RANGE_PATTERN.flags);
+
+  let lastQuestionIndex = -1;
+  for (const match of prefix.matchAll(pattern)) {
+    lastQuestionIndex = match.index ?? -1;
+  }
+
+  return lastQuestionIndex >= 0;
+}
 
 function evidenceForPage(page: ReadingSourcePage) {
   return page.evidence.length > 0
@@ -33,6 +46,7 @@ export function parseDocumentOutline(
     for (const match of page.text.matchAll(pattern)) {
       const ordinal = Number(match[1]);
       if (!Number.isSafeInteger(ordinal) || ordinal <= 0) continue;
+      if (isQuestionInstructionReference(page.text, match.index ?? 0)) continue;
 
       passages.push({
         ordinal,
