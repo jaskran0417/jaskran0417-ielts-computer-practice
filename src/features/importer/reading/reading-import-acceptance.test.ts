@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fixture from '../../../../tests/fixtures/reading-import/fixture.json';
 import expectedAnswers from '../../../../tests/fixtures/reading-import/expected-answers.json';
 import { mapAnswersToQuestions } from '../answers/question-answer-mapper';
+import { parseAnswerKey } from '../answer-key/parse-answer-key';
 import { prepareReadingPublication } from '../publication/import-publication';
 import { buildSemanticReviewQueue } from '../review/semantic-review';
 import { scoreObjectiveAttempt } from '../../../scoring/score-objective-attempt';
@@ -60,6 +61,128 @@ function allStudentQuestions(
 }
 
 describe('Reading import acceptance', () => {
+  it('survives the real PDF formatting quirks across structure and answer mapping', () => {
+    const blocks = sourceBlocks().map((block) => {
+      if (block.pageNumber === 4 && block.text.includes('Questions 10-14')) {
+        return {
+          ...block,
+          text: block.text
+            .replace('A. Ending alpha', 'A .\u00a0Ending alpha')
+            .replace('B. Ending bravo', 'B.\u200b Ending bravo')
+            .replace('C. Ending charlie', 'C ) Ending charlie'),
+        };
+      }
+
+      if (block.pageNumber === 7) {
+        return {
+          ...block,
+          text: block.text
+            .replace('i Heading one', 'i . Heading one')
+            .replace('ii Heading two', 'ii.\u200b Heading two')
+            .replace('iii Heading three', 'iii ) Heading three'),
+        };
+      }
+
+      if (block.pageNumber === 11 && block.text.includes('Questions 28-31')) {
+        return {
+          ...block,
+          text: [
+            'Questions 28-31',
+            'Complete the table below. Choose NO MORE THAN TWO WORDS AND/OR A NUMBER from the passage for each answer.',
+            '28. the unification of Catholic Spain',
+            'October 12, 1492 arrival in 29. .......... Christopher Columbus',
+            '1493 Columbus sends two copies of a report sent to the king, 30. .......... and Luis de Santangel',
+            '1507 the naming of 31. .......... Martin Waldseemuller',
+          ].join('\n'),
+        };
+      }
+
+      if (block.pageNumber === 11 && block.text.includes('Questions 32-36')) {
+        return {
+          ...block,
+          text: block.text.replace(
+            'Passage 3 has six paragraphs labelled A-F.',
+            'Passage 3 has six paragraphs labelled\u00a0 A \u200b-\u200b F.',
+          ),
+        };
+      }
+
+      return block;
+    });
+
+    const structuredDraft = buildStructuredReadingDraft({
+      blocks,
+      visualRegions: visualRegions(),
+    });
+    const questions = allDraftQuestions(structuredDraft);
+
+    expect(questions).toHaveLength(40);
+    expect(questions.find((question) => question.number === 29)?.prompt).toContain('Christopher Columbus');
+    expect(questions.find((question) => question.number === 30)?.prompt).toContain('Luis de Santangel');
+    expect(questions.find((question) => question.number === 5)?.options).toHaveLength(9);
+    expect(questions.find((question) => question.number === 20)?.options).toHaveLength(3);
+    expect(questions.find((question) => question.number === 32)?.options).toHaveLength(6);
+    expect(structuredDraft.reviewItems).toEqual([]);
+
+    const answerLines = Array.from({ length: 40 }, (_, index) => {
+      const number = index + 1;
+      const raw = expectedAnswers[String(number) as keyof typeof expectedAnswers];
+
+      if (number === 10) return '10. F Extra info- para 2: almost entirely, not entirely';
+      if (number === 11) return '11. T Extra info- para 5';
+      if (number === 12) return '12. NG Extra info- para 6';
+      if (number === 13) return '13. NG Extra info- para 7 + 4';
+      if (number === 14) return '14. T Extra info- para 9';
+      if (number === 17) return '17. (around) six/6 years';
+      if (number === 18) return '18. ninety/90 percent/per cent/%';
+      if (number === 29) return '29. (the) Bahamas';
+      if (number === 30) return '30. (the) queen / Isabella';
+
+      return `${number}. ${raw}`;
+    });
+
+    const parsedKey = parseAnswerKey(['Answers', ...answerLines].join('\n'));
+    expect(parsedKey.answers).toHaveLength(40);
+
+    const byQuestion = new Map(questions.map((question) => [question.number, question]));
+    const answerCoverage = mapAnswersToQuestions({
+      questions,
+      answerEntries: parsedKey.answers.map((answer) => {
+        const question = byQuestion.get(answer.questionNumber);
+        if (!question) throw new Error(`Missing question ${answer.questionNumber}`);
+
+        return {
+          questionNumber: answer.questionNumber,
+          raw: answer.answer,
+          constraints: question.instructionConstraints,
+          evidence: [{
+            documentId: 'reading-pdf',
+            pageNumber: 13,
+            method: 'ANSWER_KEY_A' as const,
+          }],
+        };
+      }),
+    });
+
+    expect(answerCoverage.blockingReasons).toEqual([]);
+    expect(Object.keys(answerCoverage.definitions)).toHaveLength(40);
+    expect(answerCoverage.definitions['q-10']?.canonical).toEqual(['false']);
+    expect(answerCoverage.definitions['q-11']?.canonical).toEqual(['true']);
+    expect(answerCoverage.definitions['q-12']?.canonical).toEqual(['not_given']);
+    expect([
+      ...answerCoverage.definitions['q-17']!.canonical,
+      ...answerCoverage.definitions['q-17']!.alternatives.flat(),
+    ]).toEqual(expect.arrayContaining(['six years', '6 years', 'around six years', 'around 6 years']));
+    expect([
+      ...answerCoverage.definitions['q-18']!.canonical,
+      ...answerCoverage.definitions['q-18']!.alternatives.flat(),
+    ]).toEqual(expect.arrayContaining(['ninety percent', '90 percent', '90%']));
+    expect([
+      ...answerCoverage.definitions['q-30']!.canonical,
+      ...answerCoverage.definitions['q-30']!.alternatives.flat(),
+    ]).toEqual(expect.arrayContaining(['queen', 'the queen', 'isabella']));
+  });
+
   it('converts the synthetic 13-page structure into a safe 40-question runnable Reading test', () => {
     const regions = visualRegions();
     const structuredDraft = buildStructuredReadingDraft({
