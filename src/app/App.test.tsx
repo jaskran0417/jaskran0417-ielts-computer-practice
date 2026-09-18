@@ -223,7 +223,6 @@ describe('App session flow', () => {
         repository={new EmptyAttemptRepository()}
         testCatalog={new FakeTestCatalog([importedReadingTest])}
         protectedAnswerRepository={answerRepository}
-        nowMs={1_000}
       />,
     );
 
