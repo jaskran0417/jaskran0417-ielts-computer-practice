@@ -32,7 +32,7 @@ function passageTitle(text: string, passageNumber: number): string | null {
     .filter(Boolean);
 
   const headingIndex = lines.findIndex((line) =>
-, 'i').test(line),
+    , 'i').test(line),
   );
 
   if (headingIndex < 0) return null;
