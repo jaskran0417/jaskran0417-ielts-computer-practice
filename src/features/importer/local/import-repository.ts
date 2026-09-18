@@ -10,7 +10,7 @@ export interface SourceDocumentRecord {
   kind: SourceDocumentKind;
   createdAtMs: number;
   /** Original local source bytes retained for offline evidence review and refresh recovery. */
-  sourceBlob?: Blob;
+  sourceBytes?: ArrayBuffer;
 }
 
 export type ImportFieldKind =
