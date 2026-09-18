@@ -82,6 +82,65 @@ describe('createLocalImportProcessor', () => {
     }
   });
 
+  it('renders scan-only PDF pages locally and runs two independent OCR passes', async () => {
+    const pages: ExtractedPdfPage[] = [
+      {
+        pageNumber: 1,
+        width: 600,
+        height: 800,
+        kind: 'LIKELY_SCAN',
+        signals: {
+          textItemCount: 0,
+          nonWhitespaceCharacters: 0,
+          imageObjectCount: 1,
+          pageArea: 480_000,
+        },
+        items: [],
+      },
+    ];
+    const renderedPage = new Blob(['rendered-page'], { type: 'image/png' });
+    const renderPdfPage = vi.fn(async () => renderedPage);
+    const engine: OcrEngine = {
+      async recognize(image, options) {
+        expect(image).toBe(renderedPage);
+        return {
+          text: options.pass === 'A' ? 'Choose ONE WORD ONLY' : 'Choose ONE WORD ONLY',
+          confidence: options.pass === 'A' ? 90 : 94,
+        };
+      },
+    };
+
+    const processor = createLocalImportProcessor({
+      extractPdf: async () => pages,
+      renderPdfPage,
+      ocrEngine: engine,
+      createId: idFactory(),
+      now: () => 1_500,
+    });
+
+    const draft = await processor(
+      new File(['scan-pdf'], 'scan.pdf', { type: 'application/pdf' }),
+    );
+
+    expect(renderPdfPage).toHaveBeenCalledTimes(1);
+    expect(renderPdfPage).toHaveBeenCalledWith(expect.any(ArrayBuffer), 1);
+    expect(draft.fields).toHaveLength(1);
+    expect(draft.fields[0]).toMatchObject({
+      kind: 'PASSAGE_TEXT',
+      critical: true,
+      verification: {
+        state: 'VERIFIED',
+        normalizedValue: 'Choose ONE WORD ONLY',
+      },
+    });
+    expect(draft.fields[0].verification.passA?.evidence).toMatchObject({
+      documentId: draft.sourceDocuments[0].id,
+      pageNumber: 1,
+      method: 'OCR_A',
+    });
+    expect(draft.fields[0].verification.passB?.evidence.method).toBe('OCR_B');
+  });
+
   it('runs two independent OCR passes for an image source', async () => {
     const engine: OcrEngine = {
       async recognize(_image, options) {
