@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { ImportBundle } from '../bundle/domain';
 import type { ImportDraft } from './import-repository';
 import { IndexedDbImportRepository } from './indexeddb-import-repository';
 
@@ -82,5 +83,48 @@ describe('IndexedDbImportRepository', () => {
     const drafts = await repository.listDrafts();
 
     expect(drafts.map((item) => item.id)).toEqual(['newer', 'older']);
+  });
+
+  it('round-trips a Reading bundle with one PDF split into question and answer page roles', async () => {
+    const repository = new IndexedDbImportRepository(DATABASE_NAME);
+    const original: ImportBundle = {
+      id: 'bundle-1',
+      module: 'READING',
+      title: 'Reading Test 1',
+      sourceDocuments: [
+        {
+          id: 'pdf-1',
+          name: 'reading.pdf',
+          mediaType: 'application/pdf',
+          sizeBytes: 123,
+          kind: 'PDF',
+          createdAtMs: 1,
+          sourceBytes: new TextEncoder().encode('pdf-bytes').buffer,
+        },
+      ],
+      assignments: [
+        {
+          sourceDocumentId: 'pdf-1',
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 12 }],
+        },
+        {
+          sourceDocumentId: 'pdf-1',
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 13, endPage: 13 }],
+        },
+      ],
+      status: 'COLLECTING_SOURCES',
+      updatedAtMs: 2,
+    };
+
+    await repository.saveBundle(original);
+    const restored = await repository.loadBundle(original.id);
+
+    expect(restored).toEqual(original);
+    expect(new TextDecoder().decode(restored?.sourceDocuments[0].sourceBytes)).toBe('pdf-bytes');
+
+    await repository.deleteBundle(original.id);
+    expect(await repository.loadBundle(original.id)).toBeNull();
   });
 });
