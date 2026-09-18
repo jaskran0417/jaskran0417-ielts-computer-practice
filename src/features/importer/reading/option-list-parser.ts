@@ -13,12 +13,19 @@ function alphaRange(start: string, end: string): string[] {
   );
 }
 
+function normalizePdfSpacing(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ');
+}
+
 function expectedAlphaLabels(instructionText: string): string[] {
-  const normalized = instructionText.toUpperCase();
+  const normalized = normalizePdfSpacing(instructionText).toUpperCase();
 
   const explicitRange =
-    normalized.match(/\b([A-Z])\s*[-–]\s*([A-Z])\b/) ??
-    normalized.match(/\b(?:LETTERS?|PARAGRAPHS?|SECTIONS?)\s+([A-Z])\s*[-–]\s*([A-Z])\b/);
+    normalized.match(/\b([A-Z])\s*[-–—]\s*([A-Z])\b/) ??
+    normalized.match(/\b(?:LETTERS?|PARAGRAPHS?|SECTIONS?)\s+([A-Z])\s*[-–—]\s*([A-Z])\b/);
 
   if (!explicitRange) return [];
   return alphaRange(explicitRange[1] ?? '', explicitRange[2] ?? '');
@@ -45,10 +52,10 @@ function parseExpectedAlphaOptions(
   let collecting = false;
 
   for (const rawLine of pageText.split(/\r?\n/)) {
-    const line = rawLine.trim();
+    const line = normalizePdfSpacing(rawLine).trim();
     if (!line) continue;
 
-    const option = line.match(/^([A-Z])[.)]\s+(.+)$/);
+    const option = line.match(/^([A-Z])\s*[.)]\s*(.+)$/);
     if (option && expected.has(option[1] ?? '')) {
       const id = option[1] ?? '';
       if (!collecting && id !== expectedLabels[0]) {
@@ -68,7 +75,7 @@ function parseExpectedAlphaOptions(
       if (
         /^Questions?\s+\d+/i.test(line) ||
         /^\d{1,3}[.)]?\s+/.test(line) ||
-        /^[A-Z][.)]\s+/.test(line)
+        /^[A-Z]\s*[.)]\s*/.test(line)
       ) {
         continue;
       }
@@ -118,10 +125,10 @@ function parseRomanOptions(pageText: string): ReadingChoiceOptionDraft[] {
 }
 
 function paragraphOptions(instructionText: string): ReadingChoiceOptionDraft[] {
-  const normalized = instructionText.toUpperCase();
+  const normalized = normalizePdfSpacing(instructionText).toUpperCase();
   const match =
-    normalized.match(/\bPARAGRAPHS?\s+(?:LABELLED|LABELED)\s+([A-Z])\s*[-–]\s*([A-Z])\b/) ??
-    normalized.match(/\bSECTIONS?\s+(?:LABELLED|LABELED)\s+([A-Z])\s*[-–]\s*([A-Z])\b/);
+    normalized.match(/\bPARAGRAPHS?\s+(?:LABELLED|LABELED)\s*([A-Z])\s*[-–—]\s*([A-Z])\b/) ??
+    normalized.match(/\bSECTIONS?\s+(?:LABELLED|LABELED)\s*([A-Z])\s*[-–—]\s*([A-Z])\b/);
 
   if (!match) return [];
 
