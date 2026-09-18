@@ -243,6 +243,14 @@ export function ImportWorkspace({
       let nextDraft = draft;
 
       for (const file of files) {
+        const duplicateSource = nextBundle.sourceDocuments.some(
+          (source) =>
+            source.name === file.name &&
+            source.sizeBytes === file.size &&
+            source.mediaType === (file.type || 'application/octet-stream'),
+        );
+        if (duplicateSource) continue;
+
         const imported = await processFile(file);
         const nowMs = Date.now();
         const existingIds = new Set(
