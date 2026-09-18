@@ -138,4 +138,30 @@ describe('buildSemanticReviewQueue', () => {
       }),
     );
   });
+
+  it('labels an option-list blocker as options rather than question text', () => {
+    const draft = structuredDraft();
+    draft.reviewItems.push({
+      id: 'option-list-1',
+      kind: 'OPTION_LIST',
+      questionNumber: 1,
+      message: 'Question 1 options could not be extracted reliably',
+      evidence,
+    });
+
+    const queue = buildSemanticReviewQueue({
+      structuredDraft: draft,
+      answers: answers(),
+    });
+
+    expect(queue).toContainEqual(
+      expect.objectContaining({
+        kind: 'OPTION_LIST',
+        questionNumber: 1,
+        label: 'Question 1 options',
+        state: 'REVIEW_REQUIRED',
+      }),
+    );
+  });
+
 });
