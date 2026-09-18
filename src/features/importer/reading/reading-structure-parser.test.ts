@@ -50,6 +50,22 @@ describe('buildStructuredReadingDraft', () => {
     expect(allQuestions(draft)).toHaveLength(40);
     expect(draft.reviewItems).toEqual([]);
 
+
+    const questions = allQuestions(draft);
+    expect(questions.find((question) => question.number === 5)?.options).toHaveLength(9);
+    expect(questions.find((question) => question.number === 20)?.options?.[0]).toEqual({
+      id: 'i',
+      label: 'Heading one',
+    });
+    expect(questions.find((question) => question.number === 25)?.options).toEqual([
+      { id: 'A', label: 'Q25 alpha' },
+      { id: 'B', label: 'Q25 bravo' },
+      { id: 'C', label: 'Q25 charlie' },
+      { id: 'D', label: 'Q25 delta' },
+    ]);
+    expect(questions.find((question) => question.number === 32)?.options).toHaveLength(6);
+    expect(questions.find((question) => question.number === 37)?.options).toHaveLength(5);
+
     expect(
       draft.sections.flatMap((section) =>
         section.questionGroups.map((group) => [
