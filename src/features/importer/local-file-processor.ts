@@ -89,11 +89,58 @@ function sourceRecord(
 }
 
 function normalizedPdfText(page: ExtractedPdfPage): string {
-  return page.items
-    .map((item) => item.text.trim())
+  const items = page.items
+    .filter((item) => item.text.trim().length > 0)
+    .slice()
+    .sort((left, right) => {
+      const vertical = left.rect.y - right.rect.y;
+      if (Math.abs(vertical) > Math.max(left.rect.height, right.rect.height) * 0.5) {
+        return vertical;
+      }
+      return left.rect.x - right.rect.x;
+    });
+
+  const lines: Array<{
+    centerY: number;
+    height: number;
+    items: typeof items;
+  }> = [];
+
+  for (const item of items) {
+    const centerY = item.rect.y + item.rect.height / 2;
+    const line = lines.find(
+      (candidate) =>
+        Math.abs(candidate.centerY - centerY) <=
+        Math.max(candidate.height, item.rect.height) * 0.55,
+    );
+
+    if (line) {
+      line.items.push(item);
+      const count = line.items.length;
+      line.centerY = (line.centerY * (count - 1) + centerY) / count;
+      line.height = Math.max(line.height, item.rect.height);
+    } else {
+      lines.push({
+        centerY,
+        height: item.rect.height,
+        items: [item],
+      });
+    }
+  }
+
+  return lines
+    .sort((left, right) => left.centerY - right.centerY)
+    .map((line) =>
+      line.items
+        .slice()
+        .sort((left, right) => left.rect.x - right.rect.x)
+        .map((item) => item.text.trim())
+        .join(' ')
+        .replace(/[ \t]+/g, ' ')
+        .trim(),
+    )
     .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
+    .join('\n')
     .trim();
 }
 
