@@ -413,13 +413,13 @@ describe('ImportWorkspace', () => {
       testId: 'answer-review-test',
       sourceDocuments: [source],
       fields: [
-        verified('ar1', 1, ['Passage 1', 'A Passage', 'Ninety percent is plastic.'].join('\n')),
+        verified('ar1', 1, ['Passage 1', 'A Passage', 'Several colours are listed.'].join('\n')),
         verified('ar2', 2, [
           'Questions 1-1',
           'Answer the questions using NO MORE THAN TWO WORDS AND/OR A NUMBER.',
-          '1. What proportion is plastic?',
+          '1. Which colour is listed?',
         ].join('\n')),
-        verified('ar3', 3, ['Answers', '1. ninety/90 percent/per cent/%'].join('\n')),
+        verified('ar3', 3, ['Answers', '1. red/blue/green'].join('\n')),
       ],
       updatedAtMs: 1,
     };
@@ -441,7 +441,7 @@ describe('ImportWorkspace', () => {
     await user.click(cardUi.getByRole('button', { name: 'Review & Confirm Question 1 accepted answer' }));
     const input = cardUi.getByRole('textbox', { name: 'Accepted answers' });
     await user.clear(input);
-    await user.type(input, 'ninety percent | 90 percent | 90%');
+    await user.type(input, 'red | blue | green');
     await user.click(cardUi.getByRole('button', { name: 'Confirm accepted answers' }));
 
     expect(cardUi.getByText('CONFIRMED')).toBeInTheDocument();
