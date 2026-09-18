@@ -344,4 +344,134 @@ describe('buildReadingImportModel', () => {
     expect(model.canPublish).toBe(false);
   });
 
+
+  it('accepts an explicitly confirmed visual anchor and clears the visual blocker', () => {
+    const bundle: ImportBundle = {
+      id: 'bundle-confirmed-visual',
+      module: 'READING',
+      title: 'Confirmed Visual Reading',
+      sourceDocuments: [{
+        id: 'pdf-visual-confirmed',
+        name: 'reading.pdf',
+        mediaType: 'application/pdf',
+        sizeBytes: 100,
+        kind: 'PDF',
+        createdAtMs: 1,
+      }],
+      assignments: [
+        {
+          sourceDocumentId: 'pdf-visual-confirmed',
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 2 }],
+        },
+        {
+          sourceDocumentId: 'pdf-visual-confirmed',
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 3, endPage: 3 }],
+        },
+      ],
+      visualAnchorConfirmations: {
+        'q-1': { x: 0.6, y: 0.25, width: 0.22, height: 0.07 },
+      },
+      status: 'STRUCTURING',
+      updatedAtMs: 2,
+    };
+    const draft: ImportDraft = {
+      id: 'draft-confirmed-visual',
+      testId: 'test-confirmed-visual',
+      sourceDocuments: bundle.sourceDocuments,
+      fields: [
+        field('v1', 1, ['Passage 1', 'Visual Passage', 'The corona is outermost.'].join('\n')),
+        field('v2', 2, [
+          'Questions 1-1',
+          'Label the diagram below. Choose NO MORE THAN TWO WORDS from the passage.',
+          '1. Outer layer',
+        ].join('\n')),
+        field('v3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 2,
+    };
+
+    const model = buildReadingImportModel({
+      bundle,
+      draft,
+      visualRegions: [{
+        id: 'diagram-confirmed',
+        sourceDocumentId: 'pdf-visual-confirmed',
+        pageNumber: 2,
+        kind: 'DIAGRAM',
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      }],
+    });
+
+    expect(model.visualAnchors).toContainEqual(expect.objectContaining({
+      questionNumber: 1,
+      anchor: { x: 0.6, y: 0.25, width: 0.22, height: 0.07 },
+      verificationState: 'CONFIRMED',
+    }));
+    expect(model.semanticReviewItems).not.toContainEqual(
+      expect.objectContaining({ kind: 'VISUAL_ANCHOR', questionNumber: 1, state: 'REVIEW_REQUIRED' }),
+    );
+    expect(model.canPublish).toBe(true);
+  });
+
+  it('turns an explicitly reviewed ambiguous answer into a confirmed protected definition', () => {
+    const bundle: ImportBundle = {
+      id: 'bundle-answer-review',
+      module: 'READING',
+      title: 'Answer Review Reading',
+      sourceDocuments: [{
+        id: 'pdf-answer-review',
+        name: 'reading.pdf',
+        mediaType: 'application/pdf',
+        sizeBytes: 100,
+        kind: 'PDF',
+        createdAtMs: 1,
+      }],
+      assignments: [
+        {
+          sourceDocumentId: 'pdf-answer-review',
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 2 }],
+        },
+        {
+          sourceDocumentId: 'pdf-answer-review',
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 3, endPage: 3 }],
+        },
+      ],
+      semanticConfirmations: {
+        'answer-q-1': 'ninety percent | 90 percent | 90%',
+      },
+      status: 'STRUCTURING',
+      updatedAtMs: 2,
+    };
+    const draft: ImportDraft = {
+      id: 'draft-answer-review',
+      testId: 'test-answer-review',
+      sourceDocuments: bundle.sourceDocuments,
+      fields: [
+        field('a1', 1, ['Passage 1', 'A Passage', 'Ninety percent is plastic.'].join('\n')),
+        field('a2', 2, [
+          'Questions 1-1',
+          'Answer the questions using NO MORE THAN TWO WORDS AND/OR A NUMBER.',
+          '1. What proportion is plastic?',
+        ].join('\n')),
+        field('a3', 3, ['Answers', '1. ninety/90 percent/per cent/%'].join('\n')),
+      ],
+      updatedAtMs: 2,
+    };
+
+    const model = buildReadingImportModel({ bundle, draft, visualRegions: [] });
+
+    expect(model.answerCoverage.definitions['q-1']).toMatchObject({
+      canonical: ['ninety percent'],
+      alternatives: [['90 percent'], ['90%']],
+      verificationState: 'CONFIRMED',
+    });
+    expect(model.semanticReviewItems.find((item) => item.id === 'answer-q-1')).toMatchObject({
+      state: 'CONFIRMED',
+    });
+    expect(model.canPublish).toBe(true);
+  });
 });
