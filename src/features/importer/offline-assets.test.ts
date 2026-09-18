@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { resolveOfflineOcrAssetPaths } from './ocr/offline-assets';
+import {
+  REQUIRED_OFFLINE_OCR_ASSETS,
+  resolveOfflineOcrAssetPaths,
+} from './ocr/offline-assets';
 
 describe('offline importer assets', () => {
   it('resolves worker, core and language data under the application base path', () => {
@@ -23,5 +26,18 @@ describe('offline importer assets', () => {
       expect(value).not.toMatch(/^https?:\/\//i);
       expect(value).toMatch(/^\/preview\/ocr\//);
     }
+  });
+
+  it('declares every file needed for a fully local English OCR runtime', () => {
+    expect(REQUIRED_OFFLINE_OCR_ASSETS).toEqual([
+      'ocr/worker.min.js',
+      'ocr/core/tesseract-core.wasm.js',
+      'ocr/core/tesseract-core-simd.wasm.js',
+      'ocr/core/tesseract-core-lstm.wasm.js',
+      'ocr/core/tesseract-core-simd-lstm.wasm.js',
+      'ocr/lang/eng.traineddata.gz',
+    ]);
+
+    expect(new Set(REQUIRED_OFFLINE_OCR_ASSETS).size).toBe(REQUIRED_OFFLINE_OCR_ASSETS.length);
   });
 });
