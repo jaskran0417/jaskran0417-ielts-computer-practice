@@ -189,8 +189,9 @@ describe('ImportWorkspaceContainer', () => {
 
     await screen.findByText('No source loaded');
     const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
     await user.upload(
-      screen.getByLabelText('Choose source file'),
+      screen.getByLabelText('Add source files'),
       new File(['pdf'], 'restored-reading.pdf', { type: 'application/pdf' }),
     );
 
