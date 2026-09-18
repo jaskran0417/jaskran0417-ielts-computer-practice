@@ -702,6 +702,73 @@ select:focus-visible,
   box-shadow: none;
 }
 
+.secondary-action {
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--color-surface);
+  transition: background var(--motion-fast) ease;
+}
+
+.secondary-action:hover {
+  background: var(--color-surface-subtle);
+}
+
+.submit-confirm-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(17, 24, 39, 0.5);
+}
+
+.submit-confirm-dialog {
+  width: min(420px, 100%);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.submit-confirm-dialog h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 18px;
+}
+
+.submit-confirm-dialog p {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.submit-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 520px) {
+  .submit-confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .submit-confirm-actions .primary-action,
+  .submit-confirm-actions .secondary-action {
+    width: 100%;
+  }
+}
+
 /* Focused exam player */
 .exam-loading {
   min-height: 100vh;
@@ -757,6 +824,25 @@ select:focus-visible,
   margin-top: 2px;
   font-size: 25px;
   font-variant-numeric: tabular-nums;
+}
+
+.timer-warning strong {
+  color: var(--color-warning);
+}
+
+.timer-critical strong {
+  color: var(--color-danger);
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .reading-workspace {

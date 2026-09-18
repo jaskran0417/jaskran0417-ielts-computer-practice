@@ -237,6 +237,7 @@ describe('App session flow', () => {
     const choices = await screen.findAllByRole('radio');
     await user.click(choices[0]!);
     await user.click(screen.getByRole('button', { name: 'Submit test' }));
+    await user.click(screen.getByRole('button', { name: 'Submit test now' }));
 
     expect(await screen.findByRole('heading', { name: 'Session result' })).toBeInTheDocument();
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
