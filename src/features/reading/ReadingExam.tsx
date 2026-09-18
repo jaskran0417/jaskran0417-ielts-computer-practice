@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
-import type { StudentQuestion, StudentTestPackage } from '../../test-schema/types';
-import { GapFillQuestion } from '../../question-types/GapFillQuestion';
-import { SingleChoiceQuestion } from '../../question-types/SingleChoiceQuestion';
+import type { StudentTestPackage } from '../../test-schema/types';
+import { QuestionRenderer } from '../../question-types/QuestionRenderer';
 import { useExam } from '../exam/ExamProvider';
 import { QuestionNavigator } from './QuestionNavigator';
 
@@ -16,38 +15,13 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function renderQuestion(
-  question: StudentQuestion,
-  value: string | string[] | undefined,
-  onChange: (value: string) => void,
-) {
-  if (question.type === 'SINGLE_CHOICE') {
-    return (
-      <SingleChoiceQuestion
-        question={question}
-        value={typeof value === 'string' ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
-
-  if (question.type === 'GAP_FILL') {
-    return (
-      <GapFillQuestion
-        question={question}
-        value={typeof value === 'string' ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
-
-  throw new Error(`Question renderer not attached yet: ${question.type}`);
-}
-
 export function ReadingExam({ test }: ReadingExamProps) {
   const { state, dispatch } = useExam();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const readingModule = test.modules[0];
+  const assetUrlById = Object.fromEntries(
+    (test.assets ?? []).map((asset) => [asset.id, asset.url]),
+  );
   const allQuestions = readingModule.sections.flatMap((section) =>
     section.questionGroups.flatMap((group) => group.questions),
   );
@@ -130,9 +104,15 @@ export function ReadingExam({ test }: ReadingExamProps) {
               </button>
             </div>
             <p className="question-prompt">{activeQuestion.prompt}</p>
-            {renderQuestion(activeQuestion, state.answers[activeQuestion.id], (value) =>
-              dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value })
-            )}
+            <QuestionRenderer
+              question={activeQuestion}
+              value={state.answers[activeQuestion.id]}
+              disabled={state.status !== 'ACTIVE'}
+              assetUrlById={assetUrlById}
+              onChange={(value) =>
+                dispatch({ type: 'ANSWER_CHANGED', questionId: activeQuestion.id, value })
+              }
+            />
           </div>
         </section>
       </section>
