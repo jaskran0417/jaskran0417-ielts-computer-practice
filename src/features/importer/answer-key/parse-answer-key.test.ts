@@ -77,4 +77,22 @@ describe('parseAnswerKey', () => {
       10, 11, 12, 13, 14, 15,
     ]);
   });
+  it('does not mistake a number inside an answer for the next question number', () => {
+    const result = parseAnswerKey([
+      '28. entry 28',
+      '29. (the) Bahamas',
+      '30. (the) queen / Isabella',
+      '31. entry 31',
+      '32. A',
+    ].join('\n'));
+
+    expect(result.answers).toEqual([
+      { questionNumber: 28, answer: 'entry 28' },
+      { questionNumber: 29, answer: '(the) Bahamas' },
+      { questionNumber: 30, answer: '(the) queen / Isabella' },
+      { questionNumber: 31, answer: 'entry 31' },
+      { questionNumber: 32, answer: 'A' },
+    ]);
+  });
+
 });
