@@ -34,6 +34,11 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 - Imported published tests can be selected instead of using the sample fixture.
 - Persistent passage highlighting and notes are merged and restored through IndexedDB.
 - Compact Reading exam presentation is merged.
+- Reading player presents active question groups together instead of isolating one generic card.
+- Diagram/table groups render one shared visual with all answer controls and an automatic presentation crop around confirmed anchors.
+- Mobile Reading uses an explicit Passage / Questions switch rather than squeezing or stacking both desktop panes.
+- Imported passage display strips repeated practice-page furniture/footer boilerplate.
+- Visual-anchor review includes an approximate student preview before confirmation.
 
 ### Reading import / verification
 
@@ -83,10 +88,11 @@ Completed and merged:
 - Precise PDF/image region selection and cropped re-extraction.
 - Import cleanup controls, flexible Reading scoring modes, and compact exam UI.
 - Real-PDF parser hardening for duplicate range mentions and trailing answer-key footer text.
+- IELTS-style Reading presentation overhaul: grouped question rendering, shared visual rendering, automatic visual presentation crop, cleaned instructions/passages, and mobile pane switching.
 
 Still pending as compatibility/acceptance work:
 
-- Final live-browser acceptance of the user's exact Reading PDF including visual diagram/table geometry.
+- Final live-browser acceptance of the user's exact Reading PDF after re-import/re-publish, including confirmation that the smart visual crop and saved anchors align correctly on the supplied diagram/table.
 - Windows 7 browser smoke test for the Reading path.
 
 ### Phase B — Listening
@@ -205,7 +211,7 @@ On every continuation:
 
 ## Current resume point
 
-After the exact Reading PDF regression hardening is merged, the next implementation phase is:
+After the Reading-player presentation overhaul is merged and the exact-PDF live-browser acceptance is checked, the next implementation phase is:
 
 **Phase B — Listening**.
 
