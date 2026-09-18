@@ -1064,6 +1064,77 @@ git commit -m "feat: review structured Reading import items"
 
 ---
 
+### Task 12A: Parse real choice and matching option lists
+
+**Files:**
+- Create: `src/features/importer/reading/option-list-parser.ts`
+- Test: `src/features/importer/reading/option-list-parser.test.ts`
+- Modify: `src/features/importer/reading/types.ts`
+- Modify: `src/features/importer/reading/reading-structure-parser.ts`
+- Modify: `tests/fixtures/reading-import/fixture.json`
+
+**Purpose:** The approved architecture includes `OptionListParser`. Question-type recognition alone is not enough for a runnable test: matching and MCQ questions must carry their actual choices.
+
+**Interfaces:**
+
+```ts
+export interface ReadingChoiceOptionDraft {
+  id: string;
+  label: string;
+}
+
+export function parseSharedReadingOptions(input: {
+  type: ReadingQuestionType;
+  instructionText: string;
+  pageText: string;
+}): ReadingChoiceOptionDraft[];
+
+export function parseSingleChoiceOptions(input: {
+  startQuestion: number;
+  endQuestion: number;
+  pageText: string;
+}): Record<number, ReadingChoiceOptionDraft[]>;
+```
+
+- [ ] **Step 1: Write RED tests**
+
+Cover:
+- matching sentence endings A–I even when the option list appears later on the same PDF page after another question-group heading;
+- matching headings with roman-numeral labels;
+- matching features/people A–E;
+- matching information paragraph labels derived from an explicit A–F instruction;
+- per-question MCQ A–D options, including wrapped option text.
+
+- [ ] **Step 2: Run RED**
+
+```bash
+npm test -- src/features/importer/reading/option-list-parser.test.ts --run
+```
+
+- [ ] **Step 3: Implement conservative option parsing**
+
+Use preserved PDF line boundaries. Do not invent missing option labels or text. If a required option set is incomplete, add a semantic review item and keep publication blocked.
+
+- [ ] **Step 4: Integrate options into `ReadingQuestionDraft`**
+
+Attach shared matching options to each matching question; attach per-question A–D options to each MCQ question.
+
+- [ ] **Step 5: Run GREEN**
+
+```bash
+npm test -- src/features/importer/reading/option-list-parser.test.ts src/features/importer/reading/reading-structure-parser.test.ts --run
+npm run typecheck
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/features/importer/reading tests/fixtures/reading-import/fixture.json
+git commit -m "feat: parse Reading option lists"
+```
+
+---
+
 ### Task 13: Build student-safe package and protected answer package
 
 **Files:**
