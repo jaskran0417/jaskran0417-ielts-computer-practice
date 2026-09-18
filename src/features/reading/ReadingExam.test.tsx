@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAttempt } from '../../exam-engine/create-attempt';
+import { createAttempt } from '../../exam-engine/create-attempt';
 import type { ExamAttemptState } from '../../exam-engine/types';
 import type { AttemptRepository } from '../../storage/attempt-repository';
 import { sampleReadingTest } from '../../test-schema/sample-reading';
