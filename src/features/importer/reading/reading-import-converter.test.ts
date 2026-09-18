@@ -351,7 +351,7 @@ describe('buildReadingImportModel', () => {
       module: 'READING',
       title: 'Confirmed Visual Reading',
       sourceDocuments: [{
-        id: 'pdf-visual-confirmed',
+        id: 'pdf-1',
         name: 'reading.pdf',
         mediaType: 'application/pdf',
         sizeBytes: 100,
@@ -360,12 +360,12 @@ describe('buildReadingImportModel', () => {
       }],
       assignments: [
         {
-          sourceDocumentId: 'pdf-visual-confirmed',
+          sourceDocumentId: 'pdf-1',
           role: 'QUESTION_MATERIAL',
           pageRanges: [{ startPage: 1, endPage: 2 }],
         },
         {
-          sourceDocumentId: 'pdf-visual-confirmed',
+          sourceDocumentId: 'pdf-1',
           role: 'ANSWER_KEY',
           pageRanges: [{ startPage: 3, endPage: 3 }],
         },
@@ -397,7 +397,7 @@ describe('buildReadingImportModel', () => {
       draft,
       visualRegions: [{
         id: 'diagram-confirmed',
-        sourceDocumentId: 'pdf-visual-confirmed',
+        sourceDocumentId: 'pdf-1',
         pageNumber: 2,
         kind: 'DIAGRAM',
         crop: { x: 0, y: 0, width: 1, height: 1 },
@@ -421,7 +421,7 @@ describe('buildReadingImportModel', () => {
       module: 'READING',
       title: 'Answer Review Reading',
       sourceDocuments: [{
-        id: 'pdf-answer-review',
+        id: 'pdf-1',
         name: 'reading.pdf',
         mediaType: 'application/pdf',
         sizeBytes: 100,
@@ -430,12 +430,12 @@ describe('buildReadingImportModel', () => {
       }],
       assignments: [
         {
-          sourceDocumentId: 'pdf-answer-review',
+          sourceDocumentId: 'pdf-1',
           role: 'QUESTION_MATERIAL',
           pageRanges: [{ startPage: 1, endPage: 2 }],
         },
         {
-          sourceDocumentId: 'pdf-answer-review',
+          sourceDocumentId: 'pdf-1',
           role: 'ANSWER_KEY',
           pageRanges: [{ startPage: 3, endPage: 3 }],
         },
