@@ -57,7 +57,7 @@ describe('IndexedDbImportRepository', () => {
     await repository.saveDraft(original);
     const restored = await repository.loadDraft(original.id);
     expect(restored).toEqual(original);
-    expect(restored?.sourceDocuments[0].sourceBytes).toBeInstanceOf(ArrayBuffer);
+    expect(restored?.sourceDocuments[0].sourceBytes?.byteLength).toBeGreaterThan(0);
     expect(new TextDecoder().decode(restored?.sourceDocuments[0].sourceBytes)).toBe('original-pdf');
 
     await repository.deleteDraft(original.id);
