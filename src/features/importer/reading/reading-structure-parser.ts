@@ -44,25 +44,7 @@ function numberedPrompts(
     for (let number = startQuestion; number <= endQuestion; number += 1) {
       if (prompts.has(number)) continue;
       const embedded = line.match(
-        new RegExp(`(?:^|\\s)${number}[.)]\\s*(.+?)\\s*import { parseReadingDocumentOutline } from './document-outline';
-import { parseInstructionConstraints } from './instruction-parser';
-import {
-  parseSharedReadingOptions,
-  parseSingleChoiceOptions,
-} from './option-list-parser';
-import { recognizeReadingQuestionType } from './question-type-recognizers';
-import type {
-  ImportedVisualRegion,
-  QuestionRangeOutline,
-  ReadingQuestionDraft,
-  ReadingQuestionGroupDraft,
-  ReadingSectionDraft,
-  ReadingSourceBlock,
-  StructureReviewItem,
-  StructuredReadingDraft,
-} from './types';
-
-),
+        new RegExp(`(?:^|\\s)${number}[.)]\\s*(.+?)\\s*$`),
       );
       const prompt = embedded?.[1]?.trim();
       if (prompt) {
@@ -73,7 +55,6 @@ import type {
 
   return prompts;
 }
-
 function passageTextForBlocks(
   blocks: ReadingSourceBlock[],
   passageNumber: number,
