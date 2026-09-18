@@ -84,6 +84,10 @@ function mergeDraft(
     ...current,
     sourceDocuments: [...current.sourceDocuments, ...imported.sourceDocuments],
     fields: [...current.fields, ...imported.fields],
+    visualAssets: [
+      ...(current.visualAssets ?? []),
+      ...(imported.visualAssets ?? []),
+    ],
     updatedAtMs,
   };
 }
@@ -124,10 +128,18 @@ export function ImportWorkspace({
 
     if (!hasQuestionMaterial || !hasAnswerKey) return null;
 
+    const visualRegions = (draft.visualAssets ?? []).map((asset) => ({
+      id: asset.id,
+      sourceDocumentId: asset.sourceDocumentId,
+      pageNumber: asset.pageNumber,
+      kind: asset.kind,
+      crop: asset.crop,
+    }));
+
     return buildReadingImportModel({
       bundle,
       draft,
-      visualRegions: [],
+      visualRegions,
     });
   }, [bundle, draft]);
 
