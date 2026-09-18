@@ -52,4 +52,11 @@ describe('parseAnswerExpression', () => {
     expect(result.verificationState).toBe('REVIEW_REQUIRED');
     expect(result.canonical).toEqual(['ninety/90 percent/per cent/%']);
   });
+  it('expands a spaced whole-answer alternative without applying the optional article to both choices', () => {
+    expect(accepted('(the) queen / Isabella')).toEqual([
+      'isabella',
+      'queen',
+      'the queen',
+    ]);
+  });
 });
