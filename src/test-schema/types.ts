@@ -12,9 +12,27 @@ export interface StudentTestPackage {
   versionId: string;
   title: string;
   durationSeconds: number;
-  modules: ReadingModule[];
+  modules: StudentModule[];
   assets?: MediaAsset[];
 }
+
+
+export interface ListeningModule {
+  id: string;
+  kind: 'LISTENING';
+  title: string;
+  parts: ListeningPart[];
+}
+
+export interface ListeningPart {
+  id: string;
+  partNumber: number;
+  title: string;
+  audioAssetId: string;
+  questionGroups: QuestionGroup[];
+}
+
+export type StudentModule = ReadingModule | ListeningModule;
 
 export interface ReadingModule {
   id: string;
