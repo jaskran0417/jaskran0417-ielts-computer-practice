@@ -91,4 +91,41 @@ describe('buildStructuredReadingDraft', () => {
       }),
     );
   });
+  it('keeps passage continuation text from later PDF pages before the question pages', () => {
+    const draft = buildStructuredReadingDraft({
+      blocks: [
+        {
+          pageNumber: 1,
+          text: [
+            'Passage 1',
+            'A Test Passage',
+            'First paragraph on page one.',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 1, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 2,
+          text: 'Continuation paragraph on page two.',
+          evidence: [{ documentId: 'pdf', pageNumber: 2, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 3,
+          text: [
+            'Questions 1-1',
+            'Answer the questions using NO MORE THAN TWO WORDS.',
+            '1. What is being tested?',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 3, method: 'PDF_TEXT' }],
+        },
+      ],
+      visualRegions: [],
+    });
+
+    expect(draft.sections[0]?.passageText).toEqual([
+      'First paragraph on page one.',
+      'Continuation paragraph on page two.',
+    ]);
+    expect(draft.sections[0]?.passageText.join(' ')).not.toContain('Questions 1-1');
+  });
+
 });
