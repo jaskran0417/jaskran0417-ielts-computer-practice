@@ -15,6 +15,7 @@ export interface ImportSourceManagerProps {
   onRemoveSource?(sourceDocumentId: string): void;
   onRemoveAssignment?(index: number): void;
   onClearImport?(): void;
+  onClearSources?(): void;
   onScoringModeChange?(mode: ObjectiveScoringMode): void;
 }
 
@@ -46,6 +47,7 @@ export function ImportSourceManager({
   onRemoveSource,
   onRemoveAssignment,
   onClearImport,
+  onClearSources,
   onScoringModeChange,
 }: ImportSourceManagerProps) {
   const [sourceDocumentId, setSourceDocumentId] = useState(
@@ -121,16 +123,28 @@ export function ImportSourceManager({
           <h2 id="import-sources-title">{bundle.title}</h2>
           <small>{bundle.module} · {bundle.sourceDocuments.length} source file{bundle.sourceDocuments.length === 1 ? '' : 's'}</small>
         </div>
-        {onClearImport ? (
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => onClearImport()}
-            aria-label="Start a new import"
-          >
-            New import
-          </button>
-        ) : null}
+        <div className="import-heading-actions">
+          {onClearSources && bundle.sourceDocuments.length > 0 ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => onClearSources()}
+              aria-label="Clear all imported sources"
+            >
+              Clear sources
+            </button>
+          ) : null}
+          {onClearImport ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => onClearImport()}
+              aria-label="Start a new import"
+            >
+              New import
+            </button>
+          ) : null}
+        </div>
       </div>
 
 
