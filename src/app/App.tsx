@@ -79,6 +79,7 @@ export default function App({
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [sessionResult, setSessionResult] = useState<SessionResultSummary | null>(null);
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('sessions');
+  const examNow = useCallback(() => nowMs ?? Date.now(), [nowMs]);
 
   const refreshPublishedTests = useCallback(async () => {
     try {
@@ -242,7 +243,7 @@ export default function App({
 
   return (
     <ExamProvider test={activeTest} repository={repository} nowMs={nowMs}>
-      <ReadingExam test={activeTest} onSubmit={scoreSubmittedReading} />
+      <ReadingExam test={activeTest} onSubmit={scoreSubmittedReading} now={examNow} />
     </ExamProvider>
   );
 }
