@@ -34,11 +34,15 @@ interface PdfPageLike {
   getViewport(options: { scale: number }): PdfViewportLike;
   getTextContent(): Promise<{ items: unknown[] }>;
   getOperatorList?(): Promise<{ fnArray: number[] }>;
+  render?(options: { canvasContext: unknown; viewport: PdfViewportLike }): {
+    promise: Promise<void>;
+  };
 }
 
 interface PdfDocumentLike {
   numPages: number;
   getPage(pageNumber: number): Promise<PdfPageLike>;
+  destroy?(): Promise<void>;
 }
 
 export interface PdfDocumentLoader {
@@ -183,41 +187,48 @@ function renderedCanvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-export const renderPdfPageImage: PdfPageRenderer = async (data, pageNumber) => {
+export async function renderPdfPageForEvidence(
+  data: ArrayBuffer,
+  pageNumber: number,
+  scale = 2,
+  loader: PdfDocumentLoader = pdfJsLegacyLoader,
+): Promise<{ image: Blob; width: number; height: number }> {
   if (typeof document === 'undefined') {
     throw new Error('PDF page rendering requires browser canvas APIs');
   }
 
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = bundledPdfWorkerUrl;
-
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(data) });
+  const pdfDocument = await loader.load(new Uint8Array(data));
 
   try {
-    const pdfDocument = await loadingTask.promise;
-
     if (pageNumber < 1 || pageNumber > pdfDocument.numPages) {
       throw new Error(`PDF page ${pageNumber} is outside the document range`);
     }
 
     const page = await pdfDocument.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 2 });
+    if (!page.render) {
+      throw new Error('PDF loader does not support page rendering');
+    }
+
+    const viewport = page.getViewport({ scale });
+    const width = Math.max(1, Math.ceil(viewport.width));
+    const height = Math.max(1, Math.ceil(viewport.height));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.ceil(viewport.width));
-    canvas.height = Math.max(1, Math.ceil(viewport.height));
+    canvas.width = width;
+    canvas.height = height;
 
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) {
       throw new Error('Unable to create PDF page rendering canvas');
     }
 
-    await page.render({
-      canvasContext: context,
-      viewport,
-    }).promise;
+    await page.render({ canvasContext: context, viewport }).promise;
+    const image = await renderedCanvasToBlob(canvas);
 
-    return renderedCanvasToBlob(canvas);
+    return { image, width, height };
   } finally {
-    await loadingTask.destroy();
+    await pdfDocument.destroy?.();
   }
-};
+}
+
+export const renderPdfPageImage: PdfPageRenderer = async (data, pageNumber) =>
+  (await renderPdfPageForEvidence(data, pageNumber)).image;
