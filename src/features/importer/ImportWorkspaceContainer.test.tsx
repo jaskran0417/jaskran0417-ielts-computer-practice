@@ -108,11 +108,11 @@ describe('ImportWorkspaceContainer', () => {
     );
 
     await waitFor(() =>
-      expect(repository.saved.at(-1)?.sourceDocuments).toHaveLength(1),
+      expect(repository.saved[repository.saved.length - 1]?.sourceDocuments).toHaveLength(1),
     );
     expect(
       new TextDecoder().decode(
-        repository.saved.at(-1)?.sourceDocuments[0].sourceBytes,
+        repository.saved[repository.saved.length - 1]?.sourceDocuments[0].sourceBytes,
       ),
     ).toBe('%PDF-source');
   });
