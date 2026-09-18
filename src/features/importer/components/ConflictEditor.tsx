@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ImportFieldRecord } from '../local/import-repository';
 
 function initialValue(field: ImportFieldRecord): string {
@@ -19,10 +19,6 @@ export function ConflictEditor({
   onConfirm(value: string): void;
 }) {
   const [value, setValue] = useState(() => initialValue(field));
-
-  useEffect(() => {
-    setValue(initialValue(field));
-  }, [field]);
 
   const normalized = value.trim();
 
