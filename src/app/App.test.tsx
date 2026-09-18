@@ -3,7 +3,75 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { ExamAttemptState } from '../exam-engine/types';
 import type { AttemptRepository } from '../storage/attempt-repository';
+import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
+import type { StudentTestPackage } from '../test-schema/types';
 import App from './App';
+
+const importedReadingTest: StudentTestPackage = {
+  id: 'test-imported',
+  versionId: 'version-imported-1',
+  title: 'Imported Reading Test',
+  durationSeconds: 3600,
+  modules: [
+    {
+      id: 'reading-imported',
+      kind: 'READING',
+      title: 'Reading',
+      sections: [
+        {
+          id: 'section-imported',
+          title: 'Passage 1',
+          passage: {
+            id: 'passage-imported',
+            title: 'The Layers of the Sun',
+            paragraphs: ['Imported passage text'],
+          },
+          questionGroups: [
+            {
+              id: 'group-imported',
+              instruction: 'Choose the correct answer.',
+              questions: [
+                {
+                  id: 'q-imported-1',
+                  number: 1,
+                  type: 'SINGLE_CHOICE',
+                  prompt: 'Imported question?',
+                  options: [
+                    { id: 'A', label: 'A' },
+                    { id: 'B', label: 'B' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+class FakeTestCatalog implements TestCatalogRepository {
+  constructor(private readonly tests: StudentTestPackage[]) {}
+
+  async listPublishedTests(): Promise<TestSummary[]> {
+    return this.tests.map((test) => ({
+      testId: test.id,
+      versionId: test.versionId,
+      title: test.title,
+      modules: ['READING'],
+    }));
+  }
+
+  async loadPublishedTest(testId: string, versionId: string) {
+    const test = this.tests.find(
+      (candidate) => candidate.id === testId && candidate.versionId === versionId,
+    );
+    if (!test) throw new Error('Published test version not found');
+    return test;
+  }
+
+  async saveLocalTest() {}
+}
 
 class EmptyAttemptRepository implements AttemptRepository {
   async loadAttempt() {
@@ -53,6 +121,28 @@ describe('App session flow', () => {
     expect(await screen.findByRole('option', { name: 'answers.txt' })).toBeInTheDocument();
     expect(screen.getAllByText('VERIFIED')).toHaveLength(3);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('launches the selected imported Reading package instead of the sample fixture', async () => {
+    const user = userEvent.setup();
+    render(
+      <App
+        repository={new EmptyAttemptRepository()}
+        testCatalog={new FakeTestCatalog([importedReadingTest])}
+        nowMs={1_000}
+      />,
+    );
+
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Published test' }),
+      'version-imported-1',
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
+    await user.click(screen.getByRole('button', { name: 'Create session' }));
+
+    expect(await screen.findByText('The Layers of the Sun')).toBeInTheDocument();
+    expect(screen.queryByText('Urban green spaces')).not.toBeInTheDocument();
   });
 
   it('launches Reading-only into the focused existing exam player', async () => {
