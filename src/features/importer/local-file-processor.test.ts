@@ -56,8 +56,11 @@ describe('createLocalImportProcessor', () => {
           name: 'reading.pdf',
           kind: 'PDF',
           mediaType: 'application/pdf',
+          sourceBlob: expect.any(Blob),
         }),
       ]);
+      expect(draft.sourceDocuments[0].sourceBlob?.type).toBe('application/pdf');
+      expect(await draft.sourceDocuments[0].sourceBlob?.text()).toBe('fake-pdf');
       expect(draft.fields).toHaveLength(1);
       expect(draft.fields[0]).toMatchObject({
         kind: 'PASSAGE_TEXT',
