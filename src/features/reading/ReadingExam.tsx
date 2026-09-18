@@ -31,13 +31,17 @@ function renderQuestion(
     );
   }
 
-  return (
-    <GapFillQuestion
-      question={question}
-      value={typeof value === 'string' ? value : undefined}
-      onChange={onChange}
-    />
-  );
+  if (question.type === 'GAP_FILL') {
+    return (
+      <GapFillQuestion
+        question={question}
+        value={typeof value === 'string' ? value : undefined}
+        onChange={onChange}
+      />
+    );
+  }
+
+  throw new Error(`Question renderer not attached yet: ${question.type}`);
 }
 
 export function ReadingExam({ test }: ReadingExamProps) {
