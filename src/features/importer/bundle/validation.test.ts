@@ -46,6 +46,7 @@ function readingBundle(input?: {
     module: 'READING',
     title: 'Reading Test 1',
     sourceDocuments: [sourceDocument()],
+    extractedFields: [],
     assignments: input?.assignments ?? [],
     structuredDraft: input?.structuredDraft ?? null,
     status: 'COLLECTING_SOURCES',
