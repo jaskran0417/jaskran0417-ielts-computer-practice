@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { ImportBundle } from './bundle/domain';
 import type { ImportDraft } from './local/import-repository';
 import { ImportWorkspace } from './ImportWorkspace';
 
@@ -140,4 +141,117 @@ describe('ImportWorkspace', () => {
     expect(screen.getByText('1 critical field still requires review')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publish imported test' })).toBeDisabled();
   });
+  it('shows semantic Reading review items after question and answer pages are assigned', () => {
+    const source = {
+      id: 'reading-source',
+      name: 'reading-test.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 1024,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'bundle-reading',
+      module: 'READING',
+      title: 'Imported Reading',
+      sourceDocuments: [source],
+      assignments: [
+        {
+          sourceDocumentId: source.id,
+          role: 'QUESTION_MATERIAL',
+          pageRanges: [{ startPage: 1, endPage: 2 }],
+        },
+        {
+          sourceDocumentId: source.id,
+          role: 'ANSWER_KEY',
+          pageRanges: [{ startPage: 3, endPage: 3 }],
+        },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 10,
+    };
+    const draft: ImportDraft = {
+      id: 'draft-reading',
+      testId: 'test-reading',
+      sourceDocuments: [source],
+      fields: [
+        {
+          id: 'page-1',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: 'Passage 1\\nA Test Passage\\nThe outer layer is the corona.',
+            reasons: [],
+            passA: {
+              value: 'Passage 1\\nA Test Passage\\nThe outer layer is the corona.',
+              confidence: null,
+              evidence: {
+                documentId: source.id,
+                pageNumber: 1,
+                method: 'PDF_TEXT',
+              },
+            },
+          },
+        },
+        {
+          id: 'page-2',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue:
+              'Questions 1-1\\nAnswer the questions using NO MORE THAN TWO WORDS.\\n1. What is the outer layer called?',
+            reasons: [],
+            passA: {
+              value:
+                'Questions 1-1\\nAnswer the questions using NO MORE THAN TWO WORDS.\\n1. What is the outer layer called?',
+              confidence: null,
+              evidence: {
+                documentId: source.id,
+                pageNumber: 2,
+                method: 'PDF_TEXT',
+              },
+            },
+          },
+        },
+        {
+          id: 'page-3',
+          kind: 'PASSAGE_TEXT',
+          critical: true,
+          verification: {
+            state: 'VERIFIED',
+            normalizedValue: '1 corona',
+            reasons: [],
+            passA: {
+              value: '1 corona',
+              confidence: null,
+              evidence: {
+                documentId: source.id,
+                pageNumber: 3,
+                method: 'PDF_TEXT',
+              },
+            },
+          },
+        },
+      ],
+      updatedAtMs: 10,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Structured Reading review' })).toBeInTheDocument();
+    expect(screen.getByText('Passage 1 title')).toBeInTheDocument();
+    expect(screen.getByText('Questions 1–1 instruction')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 text')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 accepted answer')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Fields to review' })).not.toBeInTheDocument();
+  });
+
 });
