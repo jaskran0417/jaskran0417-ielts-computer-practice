@@ -70,7 +70,7 @@ describe('createLocalImportProcessor', () => {
         },
       });
       expect(draft.fields[0].verification.passA).toMatchObject({
-        value: 'Urban libraries are changing. Choose ONE WORD ONLY.',
+        value: 'Urban libraries are changing.\nChoose ONE WORD ONLY.',
         evidence: {
           pageNumber: 1,
           method: 'PDF_TEXT',
