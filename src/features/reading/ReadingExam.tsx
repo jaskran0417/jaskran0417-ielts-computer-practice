@@ -4,6 +4,7 @@ import type {
   ExamAttemptState,
   PassageTextRange,
 } from '../../exam-engine/types';
+import { readingModuleFromTest } from '../../test-schema/module-helpers';
 import type { StudentTestPackage } from '../../test-schema/types';
 import { QuestionRenderer } from '../../question-types/QuestionRenderer';
 import { useExam } from '../exam/ExamProvider';
@@ -31,7 +32,7 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
   const submittingRef = useRef(false);
   const passageCopyRef = useRef<HTMLDivElement | null>(null);
   const annotationSequenceRef = useRef(0);
-  const readingModule = test.modules[0];
+  const readingModule = readingModuleFromTest(test);
   const assetUrlById = Object.fromEntries(
     (test.assets ?? []).map((asset) => [asset.id, asset.url]),
   );
