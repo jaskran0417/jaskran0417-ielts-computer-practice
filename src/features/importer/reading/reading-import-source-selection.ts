@@ -1,4 +1,5 @@
 import type { ImportSourceAssignment, PageRange } from '../bundle/domain';
+import type { NormalizedRect } from '../domain';
 import type { ImportDraft, ImportFieldRecord } from '../local/import-repository';
 import type { ReadingSourceBlock } from './types';
 
@@ -29,6 +30,17 @@ function inRanges(pageNumber: number, ranges?: PageRange[]): boolean {
   );
 }
 
+function sameRegion(left: NormalizedRect | undefined, right: NormalizedRect | undefined): boolean {
+  if (!left || !right) return !left && !right;
+  const tolerance = 0.0001;
+  return (
+    Math.abs(left.x - right.x) <= tolerance &&
+    Math.abs(left.y - right.y) <= tolerance &&
+    Math.abs(left.width - right.width) <= tolerance &&
+    Math.abs(left.height - right.height) <= tolerance
+  );
+}
+
 export function fieldsForAssignments(
   draft: ImportDraft,
   assignments: ImportSourceAssignment[],
@@ -38,7 +50,8 @@ export function fieldsForAssignments(
     return Boolean(evidence && assignments.some(
       (assignment) =>
         assignment.sourceDocumentId === evidence.documentId &&
-        inRanges(evidence.pageNumber, assignment.pageRanges),
+        inRanges(evidence.pageNumber, assignment.pageRanges) &&
+        (!assignment.region || sameRegion(evidence.region, assignment.region)),
     ));
   });
 }
