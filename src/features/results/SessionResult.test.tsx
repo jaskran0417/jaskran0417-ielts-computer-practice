@@ -25,6 +25,44 @@ describe('SessionResult', () => {
     expect(screen.getByText('Overall IELTS band unavailable for this session')).toBeInTheDocument();
   });
 
+  it('shows manual Reading as awaiting teacher marking', () => {
+    const summary: SessionResultSummary = {
+      selectedModules: ['READING'],
+      modules: [
+        {
+          module: 'READING',
+          assessmentState: 'PENDING_MANUAL',
+          totalQuestions: 40,
+        },
+      ],
+      overallBand: null,
+      overallStatus: 'PENDING',
+    };
+
+    render(<SessionResult summary={summary} />);
+    expect(screen.getByText('Awaiting teacher marking')).toBeInTheDocument();
+    expect(screen.getByText('Teacher scoring')).toBeInTheDocument();
+  });
+
+  it('shows an unscored practice result without inventing a score', () => {
+    const summary: SessionResultSummary = {
+      selectedModules: ['READING'],
+      modules: [
+        {
+          module: 'READING',
+          assessmentState: 'UNSCORED',
+          totalQuestions: 40,
+        },
+      ],
+      overallBand: null,
+      overallStatus: 'NOT_APPLICABLE',
+    };
+
+    render(<SessionResult summary={summary} />);
+    expect(screen.getByText('Unscored practice completed')).toBeInTheDocument();
+    expect(screen.queryByText(/\/ 40/)).not.toBeInTheDocument();
+  });
+
   it('marks Writing as not included for Listening + Reading', () => {
     const summary: SessionResultSummary = {
       selectedModules: ['LISTENING', 'READING'],
