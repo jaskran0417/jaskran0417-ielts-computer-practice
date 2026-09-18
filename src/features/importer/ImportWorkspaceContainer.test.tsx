@@ -141,7 +141,7 @@ describe('ImportWorkspaceContainer', () => {
         'restored-reading.pdf',
       ),
     );
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'restored-reading.pdf' })).toBeInTheDocument();
   });
 
   it('restores the newest local draft and saves explicit review changes', async () => {
@@ -156,7 +156,7 @@ describe('ImportWorkspaceContainer', () => {
     );
 
     expect(screen.getByText('Loading local import draft…')).toBeInTheDocument();
-    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'restored-reading.pdf' })).toBeInTheDocument();
 
     const confirmedValue = screen.getByRole('textbox', { name: 'Confirmed value' });
     const user = userEvent.setup();
