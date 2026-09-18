@@ -9,6 +9,7 @@ import { QuestionNavigator } from './QuestionNavigator';
 interface ReadingExamProps {
   test: StudentTestPackage;
   onSubmit?(attempt: ExamAttemptState): void | Promise<void>;
+  now?: () => number;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -17,9 +18,9 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export function ReadingExam({ test, onSubmit }: ReadingExamProps) {
+export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps) {
   const { state, dispatch } = useExam();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(() => now());
   const submittingRef = useRef(false);
   const readingModule = test.modules[0];
   const assetUrlById = Object.fromEntries(
@@ -46,15 +47,15 @@ export function ReadingExam({ test, onSubmit }: ReadingExamProps) {
   }
 
   useEffect(() => {
-    setNowMs(Date.now());
+    setNowMs(now());
     if (state.status !== 'ACTIVE') return;
 
     const timerId = window.setInterval(() => {
-      setNowMs(Date.now());
+      setNowMs(now());
     }, 1_000);
 
     return () => window.clearInterval(timerId);
-  }, [state.startedAtMs, state.status]);
+  }, [now, state.startedAtMs, state.status]);
 
   const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
   const timeLeft = remainingSeconds(state, nowMs);
@@ -147,7 +148,7 @@ export function ReadingExam({ test, onSubmit }: ReadingExamProps) {
             type="button"
             className="primary-action"
             disabled={state.status !== 'ACTIVE'}
-            onClick={() => void submitTest(Date.now())}
+            onClick={() => void submitTest(now())}
           >
             Submit test
           </button>
