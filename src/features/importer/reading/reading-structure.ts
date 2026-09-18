@@ -29,8 +29,34 @@ export interface QuestionRangeMarker {
   pageNumber: number;
   matchIndex: number;
   sourceText: string;
+  questionType?: ReadingQuestionType;
+  instructionConstraints?: InstructionConstraints;
   evidence: SourceEvidence[];
 }
+
+export interface InstructionConstraints {
+  maxWords?: number;
+  numbersAllowed?: boolean;
+  optionReuse?: 'ONCE' | 'MULTIPLE';
+  requiredSelections?: number;
+}
+
+export type ReadingQuestionType =
+  | 'SINGLE_CHOICE'
+  | 'MULTI_SELECT'
+  | 'TRUE_FALSE_NOT_GIVEN'
+  | 'YES_NO_NOT_GIVEN'
+  | 'MATCHING_INFORMATION'
+  | 'MATCHING_HEADINGS'
+  | 'MATCHING_FEATURES'
+  | 'MATCHING_SENTENCE_ENDINGS'
+  | 'SHORT_ANSWER'
+  | 'SENTENCE_COMPLETION'
+  | 'SUMMARY_COMPLETION'
+  | 'NOTE_COMPLETION'
+  | 'TABLE_COMPLETION'
+  | 'FLOW_CHART_COMPLETION'
+  | 'DIAGRAM_LABEL_COMPLETION';
 
 export interface StructuredQuestionGroupDraft {
   id: string;
