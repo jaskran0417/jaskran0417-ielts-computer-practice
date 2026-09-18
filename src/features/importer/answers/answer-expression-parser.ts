@@ -1,4 +1,4 @@
-import type { InstructionConstraints } from '../reading/types';
+import type { InstructionConstraints, ReadingQuestionType } from '../reading/types';
 import type { SourceEvidence } from '../domain';
 import type {
   AnswerDefinitionDraft,
@@ -16,6 +16,27 @@ function policyFromConstraints(
     numbersAllowed: constraints.numbersAllowed,
     orderSensitive: true,
   };
+}
+
+function normalizeEnumeratedAnswer(
+  raw: string,
+  questionType: ReadingQuestionType | undefined,
+): string {
+  const token = raw.trim().toUpperCase().replace(/[\s-]+/g, '_');
+
+  if (questionType === 'TRUE_FALSE_NOT_GIVEN') {
+    if (token === 'T') return 'TRUE';
+    if (token === 'F') return 'FALSE';
+    if (token === 'NG') return 'NOT_GIVEN';
+  }
+
+  if (questionType === 'YES_NO_NOT_GIVEN') {
+    if (token === 'Y') return 'YES';
+    if (token === 'N') return 'NO';
+    if (token === 'NG') return 'NOT_GIVEN';
+  }
+
+  return raw;
 }
 
 function normalizeCandidate(value: string): string {
@@ -75,8 +96,9 @@ export function parseAnswerExpression(input: {
   raw: string;
   constraints: InstructionConstraints;
   evidence: SourceEvidence[];
+  questionType?: ReadingQuestionType;
 }): AnswerDefinitionDraft {
-  const raw = input.raw.trim();
+  const raw = normalizeEnumeratedAnswer(input.raw, input.questionType).trim();
   const expanded = expandAnswer(raw);
 
   if (!expanded || expanded.length === 0) {
