@@ -66,6 +66,32 @@ describe('Reading option-list parsing', () => {
     ]);
   });
 
+  it('parses heading labels without punctuation exactly as extracted from the Reading fixture', () => {
+    const options = parseSharedReadingOptions({
+      type: 'MATCHING_HEADINGS',
+      instructionText: 'Choose the correct heading for each section from the list of headings below.',
+      pageText: [
+        'Questions 20-24',
+        'Choose the correct heading for each section from the list of headings below.',
+        '20 Section A',
+        '21 Section B',
+        '22 Section C',
+        '23 Section D',
+        '24 Section E',
+        'List of Headings',
+        'i Heading one',
+        'ii Heading two',
+        'iii Heading three',
+      ].join('\n'),
+    });
+
+    expect(options).toEqual([
+      { id: 'i', label: 'Heading one' },
+      { id: 'ii', label: 'Heading two' },
+      { id: 'iii', label: 'Heading three' },
+    ]);
+  });
+
   it('parses a labelled people/features list', () => {
     const options = parseSharedReadingOptions({
       type: 'MATCHING_FEATURES',
