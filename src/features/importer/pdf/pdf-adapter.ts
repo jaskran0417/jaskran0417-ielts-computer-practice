@@ -46,6 +46,11 @@ export interface PdfDocumentLoader {
   load(data: Uint8Array): Promise<PdfDocumentLike>;
 }
 
+export type PdfPageRenderer = (
+  data: ArrayBuffer,
+  pageNumber: number,
+) => Promise<Blob>;
+
 export const bundledPdfWorkerUrl = pdfWorkerUrl;
 
 const pdfJsImageOperatorCodes = new Set<number>();
@@ -164,3 +169,55 @@ export async function extractPdf(
 
   return pages;
 }
+
+
+function renderedCanvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('Unable to encode rendered PDF page'));
+      }
+    }, 'image/png');
+  });
+}
+
+export const renderPdfPageImage: PdfPageRenderer = async (data, pageNumber) => {
+  if (typeof document === 'undefined') {
+    throw new Error('PDF page rendering requires browser canvas APIs');
+  }
+
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = bundledPdfWorkerUrl;
+
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(data) });
+
+  try {
+    const pdfDocument = await loadingTask.promise;
+
+    if (pageNumber < 1 || pageNumber > pdfDocument.numPages) {
+      throw new Error(`PDF page ${pageNumber} is outside the document range`);
+    }
+
+    const page = await pdfDocument.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.ceil(viewport.width));
+    canvas.height = Math.max(1, Math.ceil(viewport.height));
+
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      throw new Error('Unable to create PDF page rendering canvas');
+    }
+
+    await page.render({
+      canvasContext: context,
+      viewport,
+    }).promise;
+
+    return renderedCanvasToBlob(canvas);
+  } finally {
+    await loadingTask.destroy();
+  }
+};
