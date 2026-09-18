@@ -54,7 +54,7 @@ export const parseAnswerKeyByLines: AnswerKeyParser = (text) =>
 export const parseAnswerKeyByTokens: AnswerKeyParser = (text) => {
   const normalized = stripAnswerCommentary(text).replace(/\r/g, ' ').trim();
   const entries: ParsedAnswer[] = [];
-  const pattern = /(\d{1,3})[.)]?\s+(.+?)(?=\s+\d{1,3}[.)]?\s+|$)/gs;
+  const pattern = /(\d{1,3})[.)]?\s+(.+?)(?=(?:\n+|[ \t]{2,})\d{1,3}[.)]?\s+|$)/gs;
 
   for (const match of normalized.matchAll(pattern)) {
     const questionNumber = Number(match[1]);
