@@ -145,6 +145,50 @@ describe('buildStructuredReadingDraft', () => {
   });
 
 
+  it('removes repeated practice headers and footer notes from passage text', () => {
+    const draft = buildStructuredReadingDraft({
+      blocks: [
+        {
+          pageNumber: 1,
+          text: [
+            'Passage 1',
+            'The Layers of the Sun',
+            'Real passage paragraph one.',
+            'Note: This is not a real IELTS test. This practice test is to give you an opportunity to practise.',
+            'implementing the strategies from the course. It does not reflect the scores.',
+            'IELTS Advantage Practice Reading Test 1',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 1, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 2,
+          text: [
+            'IELTS Advantage Practice Reading Test 1',
+            'Real continuation paragraph.',
+            'Note: This is not a real IELTS test.',
+            'level of difficulty of a real IELTS test.',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 2, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 3,
+          text: [
+            'Questions 1-1',
+            'Answer the questions using NO MORE THAN TWO WORDS.',
+            '1. What is being tested?',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 3, method: 'PDF_TEXT' }],
+        },
+      ],
+      visualRegions: [],
+    });
+
+    expect(draft.sections[0]?.passageText).toEqual([
+      'Real passage paragraph one.',
+      'Real continuation paragraph.',
+    ]);
+  });
+
   it('attaches shared matching options even when they appear later on the same page', () => {
     const draft = buildStructuredReadingDraft({
       blocks: [
