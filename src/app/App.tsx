@@ -11,7 +11,10 @@ import { isSupabaseConfigured, supabase } from '../database/supabase';
 import type { SessionRepository } from '../session/session-repository';
 import type { SessionConfig, SessionModule } from '../session/types';
 import { IndexedDbTestCatalog } from '../test-catalog/indexeddb-test-catalog';
-import { SupabaseTestCatalog } from '../test-catalog/supabase-test-catalog';
+import {
+  createSupabaseCatalogDataSource,
+  SupabaseTestCatalog,
+} from '../test-catalog/supabase-test-catalog';
 import type { TestCatalogRepository, TestSummary } from '../test-catalog/test-catalog-repository';
 import type { StudentTestPackage } from '../test-schema/types';
 import { AppShell, type AppShellNavItem } from './AppShell';
@@ -48,7 +51,7 @@ export default function App({
   const defaultImportProcessor = useMemo(() => createLocalImportProcessor(), []);
   const defaultTestCatalog = useMemo<TestCatalogRepository>(() => {
     if (isSupabaseConfigured && supabase) {
-      return new SupabaseTestCatalog(supabase);
+      return new SupabaseTestCatalog(createSupabaseCatalogDataSource(supabase));
     }
     return new IndexedDbTestCatalog();
   }, []);
