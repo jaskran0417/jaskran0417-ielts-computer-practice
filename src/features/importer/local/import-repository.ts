@@ -1,3 +1,4 @@
+import type { ImportBundle } from '../bundle/domain';
 import type { VerificationResult } from '../domain';
 
 export type SourceDocumentKind = 'PDF' | 'IMAGE' | 'ANSWER_KEY' | 'AUDIO' | 'OTHER';
@@ -42,4 +43,8 @@ export interface ImportRepository {
   saveDraft(draft: ImportDraft): Promise<void>;
   deleteDraft(id: string): Promise<void>;
   listDrafts(): Promise<ImportDraft[]>;
+  loadBundle(id: string): Promise<ImportBundle | null>;
+  saveBundle(bundle: ImportBundle): Promise<void>;
+  deleteBundle(id: string): Promise<void>;
+  listBundles(): Promise<ImportBundle[]>;
 }
