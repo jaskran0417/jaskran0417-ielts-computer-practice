@@ -30,6 +30,7 @@ function bundle(overrides: Partial<ImportBundle> = {}): ImportBundle {
         sourceBytes: new TextEncoder().encode('answer-image-bytes').buffer,
       },
     ],
+    extractedFields: [],
     assignments: [
       {
         id: 'questions-role',
