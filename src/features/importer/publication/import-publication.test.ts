@@ -154,6 +154,39 @@ describe('prepareReadingPublication', () => {
     expect(studentJson).not.toContain('correctAnswer');
   });
 
+  it('publishes unscored Reading without an answer key and exposes no protected answers', () => {
+    const missingAnswers: AnswerCoverageResult = {
+      definitions: {},
+      missingQuestionNumbers: [1],
+      duplicateQuestionNumbers: [],
+      unmappedAnswerNumbers: [],
+      blockingReasons: ['Missing answers for questions: 1'],
+    };
+    const reviewItems = verifiedReview().filter(
+      (item) => item.kind !== 'ANSWER_DEFINITION',
+    );
+
+    const result = prepareReadingPublication({
+      testId: 'test-unscored',
+      versionId: 'version-unscored',
+      structuredDraft: structuredDraft(),
+      answerCoverage: missingAnswers,
+      reviewItems,
+      visualAnchors: [],
+      visualAssets: {},
+      scoringMode: 'UNSCORED',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected unscored Reading to publish');
+
+    expect(result.value.studentPackage.modules[0]).toMatchObject({
+      kind: 'READING',
+      scoringMode: 'UNSCORED',
+    });
+    expect(result.value.protectedAnswers).toEqual({});
+  });
+
   it('blocks publication while a critical semantic item still requires review', () => {
     const reviewItems = verifiedReview();
     reviewItems[0] = {
