@@ -34,12 +34,14 @@ describe('buildStructuredReadingDraft', () => {
           sourceDocumentId: 'reading-pdf',
           pageNumber: 3,
           kind: 'DIAGRAM',
+          crop: { x: 0.1, y: 0.2, width: 0.8, height: 0.5 },
         },
         {
           id: 'table-page-11',
           sourceDocumentId: 'reading-pdf',
           pageNumber: 11,
           kind: 'TABLE',
+          crop: { x: 0.05, y: 0.45, width: 0.9, height: 0.4 },
         },
       ],
     });
