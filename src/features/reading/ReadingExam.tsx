@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { remainingSeconds } from '../../exam-engine/time';
+import type { ExamAttemptState } from '../../exam-engine/types';
 import type { StudentTestPackage } from '../../test-schema/types';
 import { QuestionRenderer } from '../../question-types/QuestionRenderer';
 import { useExam } from '../exam/ExamProvider';
@@ -7,6 +8,7 @@ import { QuestionNavigator } from './QuestionNavigator';
 
 interface ReadingExamProps {
   test: StudentTestPackage;
+  onSubmit?(attempt: ExamAttemptState): void | Promise<void>;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -15,9 +17,10 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export function ReadingExam({ test }: ReadingExamProps) {
+export function ReadingExam({ test, onSubmit }: ReadingExamProps) {
   const { state, dispatch } = useExam();
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const submittingRef = useRef(false);
   const readingModule = test.modules[0];
   const assetUrlById = Object.fromEntries(
     (test.assets ?? []).map((asset) => [asset.id, asset.url]),
@@ -56,11 +59,29 @@ export function ReadingExam({ test }: ReadingExamProps) {
   const isReviewed = state.reviewQuestionIds.includes(activeQuestion.id);
   const timeLeft = remainingSeconds(state, nowMs);
 
+  async function submitTest(submittedAtMs: number) {
+    if (state.status !== 'ACTIVE' || submittingRef.current) return;
+
+    submittingRef.current = true;
+    const submittedAttempt: ExamAttemptState = {
+      ...state,
+      status: 'SUBMITTED',
+      submittedAtMs,
+    };
+    dispatch({ type: 'SUBMIT', submittedAtMs });
+
+    try {
+      await onSubmit?.(submittedAttempt);
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
   useEffect(() => {
     if (state.status === 'ACTIVE' && timeLeft === 0) {
-      dispatch({ type: 'SUBMIT', submittedAtMs: nowMs });
+      void submitTest(nowMs);
     }
-  }, [dispatch, nowMs, state.status, timeLeft]);
+  }, [nowMs, state.status, timeLeft]);
 
   return (
     <main className="exam-shell">
@@ -122,6 +143,14 @@ export function ReadingExam({ test }: ReadingExamProps) {
         <div className="footer-status">
           <span className="status-key"><i className="answered-key" /> Answered</span>
           <span className="status-key"><i className="review-key" /> Review</span>
+          <button
+            type="button"
+            className="primary-action"
+            disabled={state.status !== 'ACTIVE'}
+            onClick={() => void submitTest(Date.now())}
+          >
+            Submit test
+          </button>
         </div>
       </footer>
     </main>
