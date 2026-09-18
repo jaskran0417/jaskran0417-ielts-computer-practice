@@ -27,5 +27,7 @@ export function createAttempt(test: StudentTestPackage, nowMs: number): ExamAtte
     answers: {},
     reviewQuestionIds: [],
     visitedQuestionIds: [firstQuestionId],
+    highlights: [],
+    notes: [],
   };
 }
