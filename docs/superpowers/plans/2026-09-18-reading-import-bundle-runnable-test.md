@@ -1590,7 +1590,7 @@ Deferred deliberately to separate approved-architecture plans:
 
 ### Placeholder scan
 
-The plan contains no implementation placeholders such as `TBD`, `TODO`, or "implement later." Deferred features are explicitly scoped into separate plans rather than left ambiguous inside this one.
+The plan contains no unfinished placeholder markers or vague implementation gaps. Deferred features are explicitly scoped into separate plans rather than left ambiguous inside this one.
 
 ### Type consistency
 
