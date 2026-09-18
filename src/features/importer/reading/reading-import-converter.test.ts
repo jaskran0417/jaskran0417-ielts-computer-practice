@@ -474,4 +474,107 @@ describe('buildReadingImportModel', () => {
     });
     expect(model.canPublish).toBe(true);
   });
+  it('uses an explicit semantic confirmation to restore missing question text', () => {
+    const bundle: ImportBundle = {
+      id: 'bundle-question-text-review',
+      module: 'READING',
+      title: 'Recovered Reading',
+      sourceDocuments: [{
+        id: 'pdf-1',
+        name: 'reading.pdf',
+        mediaType: 'application/pdf',
+        sizeBytes: 100,
+        kind: 'PDF',
+        createdAtMs: 1,
+      }],
+      assignments: [
+        { sourceDocumentId: 'pdf-1', role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: 'pdf-1', role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      semanticConfirmations: {
+        'review-question-text-2': 'What is the second recovered answer?',
+      },
+      status: 'STRUCTURING',
+      updatedAtMs: 2,
+    };
+    const draft: ImportDraft = {
+      id: 'draft-question-text-review',
+      testId: 'test-question-text-review',
+      sourceDocuments: bundle.sourceDocuments,
+      fields: [
+        field('qtr-1', 1, ['Passage 1', 'Recovered Passage', 'Passage text.'].join('\n')),
+        field('qtr-2', 2, [
+          'Questions 1-2',
+          'Answer the questions using NO MORE THAN TWO WORDS.',
+          '1. What is the first answer?',
+        ].join('\n')),
+        field('qtr-3', 3, ['Answers', '1. alpha', '2. beta'].join('\n')),
+      ],
+      updatedAtMs: 2,
+    };
+
+    const model = buildReadingImportModel({ bundle, draft, visualRegions: [] });
+    const questions = model.structuredDraft.sections[0]?.questionGroups[0]?.questions ?? [];
+
+    expect(questions.map((question) => question.number)).toEqual([1, 2]);
+    expect(questions[1]?.prompt).toBe('What is the second recovered answer?');
+    expect(model.semanticReviewItems).not.toContainEqual(
+      expect.objectContaining({ kind: 'QUESTION_TEXT', questionNumber: 2, state: 'REVIEW_REQUIRED' }),
+    );
+    expect(model.canPublish).toBe(true);
+  });
+
+  it('uses one confirmed option list to recover the whole matching group', () => {
+    const bundle: ImportBundle = {
+      id: 'bundle-option-review',
+      module: 'READING',
+      title: 'Recovered Options',
+      sourceDocuments: [{
+        id: 'pdf-1',
+        name: 'reading.pdf',
+        mediaType: 'application/pdf',
+        sizeBytes: 100,
+        kind: 'PDF',
+        createdAtMs: 1,
+      }],
+      assignments: [
+        { sourceDocumentId: 'pdf-1', role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: 'pdf-1', role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      semanticConfirmations: {
+        'review-option-list-1': 'A. Ending alpha\nB. Ending bravo',
+      },
+      status: 'STRUCTURING',
+      updatedAtMs: 2,
+    };
+    const draft: ImportDraft = {
+      id: 'draft-option-review',
+      testId: 'test-option-review',
+      sourceDocuments: bundle.sourceDocuments,
+      fields: [
+        field('or-1', 1, ['Passage 1', 'Options Passage', 'Passage text.'].join('\n')),
+        field('or-2', 2, [
+          'Questions 1-2',
+          'Complete each sentence with the correct ending A-B.',
+          '1. First stem',
+          '2. Second stem',
+        ].join('\n')),
+        field('or-3', 3, ['Answers', '1. A', '2. B'].join('\n')),
+      ],
+      updatedAtMs: 2,
+    };
+
+    const model = buildReadingImportModel({ bundle, draft, visualRegions: [] });
+    const questions = model.structuredDraft.sections[0]?.questionGroups[0]?.questions ?? [];
+
+    expect(questions[0]?.options).toEqual([
+      { id: 'A', label: 'Ending alpha' },
+      { id: 'B', label: 'Ending bravo' },
+    ]);
+    expect(questions[1]?.options).toEqual(questions[0]?.options);
+    expect(model.semanticReviewItems).not.toContainEqual(
+      expect.objectContaining({ kind: 'OPTION_LIST', state: 'REVIEW_REQUIRED' }),
+    );
+    expect(model.canPublish).toBe(true);
+  });
 });
