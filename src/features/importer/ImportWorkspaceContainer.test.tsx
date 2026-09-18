@@ -92,6 +92,58 @@ class FakeImportRepository implements ImportRepository {
 }
 
 describe('ImportWorkspaceContainer', () => {
+  it('creates and persists a manually selected Reading import bundle', async () => {
+    const repository = new FakeImportRepository([]);
+    const user = userEvent.setup();
+
+    render(
+      <ImportWorkspaceContainer
+        repository={repository}
+        processFile={vi.fn()}
+      />,
+    );
+
+    await screen.findByText('No source loaded');
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
+
+    await waitFor(() => expect(repository.bundles).toHaveLength(1));
+    expect(repository.bundles[0]).toMatchObject({
+      module: 'READING',
+      title: 'Untitled Reading Test',
+      sourceDocuments: [],
+      assignments: [],
+      status: 'COLLECTING_SOURCES',
+    });
+    expect(screen.getByText('Untitled Reading Test')).toBeInTheDocument();
+  });
+
+  it('adds processed local files to the current import bundle', async () => {
+    const repository = new FakeImportRepository([]);
+    const user = userEvent.setup();
+    const processFile = vi.fn(async () => restoredDraft);
+
+    render(
+      <ImportWorkspaceContainer
+        repository={repository}
+        processFile={processFile}
+      />,
+    );
+
+    await screen.findByText('No source loaded');
+    await user.click(screen.getByRole('button', { name: 'Reading' }));
+    await user.upload(
+      screen.getByLabelText('Add source files'),
+      new File(['pdf'], 'restored-reading.pdf', { type: 'application/pdf' }),
+    );
+
+    await waitFor(() =>
+      expect(repository.bundles.at(-1)?.sourceDocuments[0]?.name).toBe(
+        'restored-reading.pdf',
+      ),
+    );
+    expect(await screen.findByText('restored-reading.pdf')).toBeInTheDocument();
+  });
+
   it('restores the newest local draft and saves explicit review changes', async () => {
     const repository = new FakeImportRepository([restoredDraft]);
     const processFile = vi.fn();
