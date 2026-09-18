@@ -118,14 +118,16 @@ export function ImportSourceManager({
           <h2 id="import-sources-title">{bundle.title}</h2>
           <small>{bundle.module} · {bundle.sourceDocuments.length} source file{bundle.sourceDocuments.length === 1 ? '' : 's'}</small>
         </div>
-        <button
-          type="button"
-          className="secondary-action"
-          onClick={() => onClearImport?.()}
-          aria-label="Start a new import"
-        >
-          New import
-        </button>
+        {onClearImport ? (
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => onClearImport()}
+            aria-label="Start a new import"
+          >
+            New import
+          </button>
+        ) : null}
       </div>
 
       <label className="import-file-control">
@@ -153,17 +155,19 @@ export function ImportSourceManager({
               ))}
             </select>
           </label>
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => {
-              if (!selectedSource) return;
-              onRemoveSource?.(selectedSource.id);
-              setSourceDocumentId('');
-            }}
-          >
-            Remove source
-          </button>
+          {onRemoveSource ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => {
+                if (!selectedSource) return;
+                onRemoveSource(selectedSource.id);
+                setSourceDocumentId('');
+              }}
+            >
+              Remove source
+            </button>
+          ) : null}
 
           <label>
             <span>Source role</span>
@@ -223,14 +227,16 @@ export function ImportSourceManager({
               <div key={`${assignment.sourceDocumentId}-${assignment.role}-${index}`}>
                 <strong>{source?.name ?? 'Source'}</strong>
                 <span>{assignment.role}{ranges ? ` · ${ranges}` : ''}</span>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() => onRemoveAssignment?.(index)}
-                  aria-label={`Remove ${assignment.role} assignment`}
-                >
-                  Remove assignment
-                </button>
+                {onRemoveAssignment ? (
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => onRemoveAssignment(index)}
+                    aria-label={`Remove ${assignment.role} assignment`}
+                  >
+                    Remove assignment
+                  </button>
+                ) : null}
               </div>
             );
           })}
