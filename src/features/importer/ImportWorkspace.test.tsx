@@ -697,7 +697,7 @@ describe('ImportWorkspace', () => {
     );
     await user.click(editor.getByRole('button', { name: 'Confirm semantic value' }));
 
-    expect(changes.at(-1)?.semanticConfirmations).toMatchObject({
+    expect(changes[changes.length - 1]?.semanticConfirmations).toMatchObject({
       'review-question-text-2': 'Second recovered question?',
     });
   });
