@@ -120,14 +120,19 @@ describe('ImportWorkspace', () => {
       screen.getByLabelText('Choose source file'),
       new File(['pdf'], 'practice-test.pdf', { type: 'application/pdf' }),
     );
-    await user.click(await screen.findByRole('button', { name: 'Review QUESTION_TEXT' }));
+    const reviewButton = await screen.findByRole('button', {
+      name: 'Review & Confirm QUESTION_TEXT',
+    });
+    const reviewCard = reviewButton.closest('article');
+    expect(reviewCard).not.toBeNull();
 
-    await user.clear(screen.getByRole('textbox', { name: 'Confirmed value' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Confirmed value' }),
-      'The library closes at 6 pm.',
-    );
-    await user.click(screen.getByRole('button', { name: 'Confirm value' }));
+    await user.click(reviewButton);
+
+    const card = within(reviewCard as HTMLElement);
+    const confirmedValue = card.getByRole('textbox', { name: 'Confirmed value' });
+    await user.clear(confirmedValue);
+    await user.type(confirmedValue, 'The library closes at 6 pm.');
+    await user.click(card.getByRole('button', { name: 'Confirm value' }));
 
     expect(screen.getByText('CONFIRMED')).toBeInTheDocument();
     expect(screen.getByText('1 critical field still requires review')).toBeInTheDocument();
