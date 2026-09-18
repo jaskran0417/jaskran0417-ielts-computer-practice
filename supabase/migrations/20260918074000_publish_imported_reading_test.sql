@@ -28,7 +28,10 @@ begin
       message = 'Authentication is required to publish a test';
   end if;
 
-  if private.current_user_role() not in ('admin', 'teacher') then
+  if not coalesce(
+    private.current_user_role() in ('admin', 'teacher'),
+    false
+  ) then
     raise exception using
       errcode = '42501',
       message = 'Only staff can publish imported tests';
