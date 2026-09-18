@@ -1,5 +1,9 @@
 import { parseReadingDocumentOutline } from './document-outline';
 import { parseInstructionConstraints } from './instruction-parser';
+import {
+  parseSharedReadingOptions,
+  parseSingleChoiceOptions,
+} from './option-list-parser';
 import { recognizeReadingQuestionType } from './question-type-recognizers';
 import type {
   ImportedVisualRegion,
@@ -97,6 +101,7 @@ function buildQuestionGroup(
   range: QuestionRangeOutline,
   visualRegions: ImportedVisualRegion[],
   reviewItems: StructureReviewItem[],
+  pageText: string,
 ): ReadingQuestionGroupDraft | null {
   const recognition = recognizeReadingQuestionType({
     instructionText: range.instructionText,
@@ -117,6 +122,21 @@ function buildQuestionGroup(
 
   const prompts = numberedPrompts(range.instructionText);
   const constraints = parseInstructionConstraints(range.instructionText);
+  const sharedOptions = recognition.type
+    ? parseSharedReadingOptions({
+        type: recognition.type,
+        instructionText: range.instructionText,
+        pageText,
+      })
+    : [];
+  const singleChoiceOptions =
+    recognition.type === 'SINGLE_CHOICE'
+      ? parseSingleChoiceOptions({
+          startQuestion: range.start,
+          endQuestion: range.end,
+          pageText,
+        })
+      : {};
   const questions: ReadingQuestionDraft[] = [];
 
   for (let number = range.start; number <= range.end; number += 1) {
@@ -141,6 +161,35 @@ function buildQuestionGroup(
       instructionConstraints: constraints,
       evidence: range.evidence,
     };
+
+    if (recognition.type === 'SINGLE_CHOICE') {
+      question.options = singleChoiceOptions[number] ?? [];
+    } else if (
+      recognition.type === 'MATCHING_INFORMATION' ||
+      recognition.type === 'MATCHING_HEADINGS' ||
+      recognition.type === 'MATCHING_FEATURES' ||
+      recognition.type === 'MATCHING_SENTENCE_ENDINGS'
+    ) {
+      question.options = sharedOptions;
+      question.allowOptionReuse = /more than once/i.test(range.instructionText);
+    }
+
+    if (
+      (recognition.type === 'SINGLE_CHOICE' ||
+        recognition.type === 'MATCHING_INFORMATION' ||
+        recognition.type === 'MATCHING_HEADINGS' ||
+        recognition.type === 'MATCHING_FEATURES' ||
+        recognition.type === 'MATCHING_SENTENCE_ENDINGS') &&
+      (!question.options || question.options.length === 0)
+    ) {
+      reviewItems.push({
+        id: `option-list-${number}`,
+        kind: 'OPTION_LIST',
+        questionNumber: number,
+        message: `Question ${number} options could not be extracted reliably`,
+        evidence: range.evidence,
+      });
+    }
 
     if (recognition.type === 'DIAGRAM_LABEL_COMPLETION') {
       question.visualRegionId = firstVisualId(
@@ -201,9 +250,18 @@ export function buildStructuredReadingDraft(input: {
       });
 
       const questionGroups = ranges
-        .map((range) =>
-          buildQuestionGroup(range, input.visualRegions, reviewItems),
-        )
+        .map((range) => {
+          const pageText = input.blocks
+            .filter((block) => range.pageNumbers.includes(block.pageNumber))
+            .map((block) => block.text)
+            .join('\n');
+          return buildQuestionGroup(
+            range,
+            input.visualRegions,
+            reviewItems,
+            pageText,
+          );
+        })
         .filter(
           (group): group is ReadingQuestionGroupDraft => group !== null,
         );
