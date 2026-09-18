@@ -1,10 +1,11 @@
+import { questionGroupsForModule } from '../test-schema/module-helpers';
 import type { StudentTestPackage } from '../test-schema/types';
 import type { ExamAttemptState } from './types';
 
 export function questionIds(test: StudentTestPackage): string[] {
   return test.modules.flatMap((module) =>
-    module.sections.flatMap((section) =>
-      section.questionGroups.flatMap((group) => group.questions.map((question) => question.id)),
+    questionGroupsForModule(module).flatMap((group) =>
+      group.questions.map((question) => question.id),
     ),
   );
 }
