@@ -157,6 +157,46 @@ begin
 end;
 $$;
 
+drop policy if exists responses_insert_own on public.attempt_responses;
+drop policy if exists responses_update_own on public.attempt_responses;
+drop policy if exists responses_insert_active_own on public.attempt_responses;
+drop policy if exists responses_update_active_own on public.attempt_responses;
+
+create policy responses_insert_active_own
+on public.attempt_responses for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.attempts
+    where attempts.id = attempt_responses.attempt_id
+      and attempts.user_id = (select auth.uid())
+      and attempts.status = 'active'::public.attempt_status
+  )
+);
+
+create policy responses_update_active_own
+on public.attempt_responses for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.attempts
+    where attempts.id = attempt_responses.attempt_id
+      and attempts.user_id = (select auth.uid())
+      and attempts.status = 'active'::public.attempt_status
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.attempts
+    where attempts.id = attempt_responses.attempt_id
+      and attempts.user_id = (select auth.uid())
+      and attempts.status = 'active'::public.attempt_status
+  )
+);
+
 create or replace function public.score_objective_attempt(
   p_attempt_id uuid
 )
@@ -205,7 +245,8 @@ begin
       message = 'You cannot score this attempt';
   end if;
 
-  if v_attempt.status <> 'submitted'::public.attempt_status then
+  if v_attempt.status <> 'submitted'::public.attempt_status
+     or v_attempt.submitted_at is null then
     raise exception using
       errcode = '22023',
       message = 'Attempt must be submitted before scoring';
