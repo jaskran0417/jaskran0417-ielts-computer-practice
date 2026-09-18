@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sampleReadingTest } from '../test-schema/sample-reading';
+import type { StudentTestPackage } from '../test-schema/types';
 import { createAttempt } from './create-attempt';
 import { examReducer } from './reducer';
 
@@ -82,6 +83,143 @@ describe('examReducer', () => {
     expect(edited.notes).toHaveLength(1);
     expect(edited.notes[0]?.body).toBe('Updated note');
     expect(removed.notes).toEqual([]);
+  });
+
+
+  it('tracks Listening playback progress and part changes', () => {
+    const listeningTest: StudentTestPackage = {
+      id: 'listening-test',
+      versionId: 'listening-v1',
+      title: 'Listening practice',
+      durationSeconds: 40 * 60,
+      modules: [{
+        id: 'listening',
+        kind: 'LISTENING',
+        title: 'Listening',
+        finalReviewSeconds: 120,
+        sections: [{
+          id: 'part-1',
+          title: 'Part 1',
+          partNumber: 1,
+          audioAssetId: 'audio-1',
+          questionGroups: [{
+            id: 'group-1',
+            instruction: 'Answer the question.',
+            questions: [{
+              id: 'lq1',
+              number: 1,
+              type: 'GAP_FILL',
+              prompt: 'Question one',
+            }],
+          }],
+        }, {
+          id: 'part-2',
+          title: 'Part 2',
+          partNumber: 2,
+          audioAssetId: 'audio-2',
+          questionGroups: [{
+            id: 'group-2',
+            instruction: 'Answer the question.',
+            questions: [{
+              id: 'lq2',
+              number: 2,
+              type: 'GAP_FILL',
+              prompt: 'Question two',
+            }],
+          }],
+        }],
+      }],
+    };
+
+    const initial = createAttempt(listeningTest, 1_000);
+    expect(initial.listeningPlayback).toEqual({
+      partIndex: 0,
+      audioPositionSeconds: 0,
+      started: false,
+      ended: false,
+      pauses: [],
+    });
+
+    const started = examReducer(initial, {
+      type: 'LISTENING_STARTED',
+      partIndex: 0,
+      audioPositionSeconds: 0,
+    });
+    const progressed = examReducer(started, {
+      type: 'LISTENING_PROGRESS',
+      partIndex: 0,
+      audioPositionSeconds: 18.4,
+    });
+    const changed = examReducer(progressed, {
+      type: 'LISTENING_PART_CHANGED',
+      partIndex: 1,
+      audioPositionSeconds: 0,
+    });
+
+    expect(started.listeningPlayback?.started).toBe(true);
+    expect(progressed.listeningPlayback?.audioPositionSeconds).toBe(18.4);
+    expect(changed.listeningPlayback).toMatchObject({
+      partIndex: 1,
+      audioPositionSeconds: 0,
+      ended: false,
+    });
+  });
+
+  it('records and closes deliberate Practice Listening pauses', () => {
+    const initial = {
+      ...createAttempt(sampleReadingTest, 1_000),
+      listeningPlayback: {
+        partIndex: 0,
+        audioPositionSeconds: 42,
+        started: true,
+        ended: false,
+        pauses: [],
+      },
+    };
+
+    const paused = examReducer(initial, {
+      type: 'LISTENING_PRACTICE_PAUSE_STARTED',
+      pause: {
+        id: 'pause-1',
+        startedAtMs: 2_000,
+        audioPositionSeconds: 42,
+      },
+    });
+    const resumed = examReducer(paused, {
+      type: 'LISTENING_PRACTICE_PAUSE_ENDED',
+      pauseId: 'pause-1',
+      endedAtMs: 5_000,
+      audioPositionSeconds: 42,
+    });
+
+    expect(paused.listeningPlayback?.pauses).toEqual([{
+      id: 'pause-1',
+      startedAtMs: 2_000,
+      audioPositionSeconds: 42,
+    }]);
+    expect(resumed.listeningPlayback?.pauses[0]?.endedAtMs).toBe(5_000);
+  });
+
+  it('persists Listening final review and ended state', () => {
+    const initial = {
+      ...createAttempt(sampleReadingTest, 1_000),
+      listeningPlayback: {
+        partIndex: 3,
+        audioPositionSeconds: 600,
+        started: true,
+        ended: false,
+        pauses: [],
+      },
+    };
+
+    const reviewing = examReducer(initial, {
+      type: 'LISTENING_FINAL_REVIEW_STARTED',
+      startedAtMs: 10_000,
+    });
+    const ended = examReducer(reviewing, { type: 'LISTENING_ENDED' });
+
+    expect(reviewing.listeningPlayback?.finalReviewStartedAtMs).toBe(10_000);
+    expect(ended.listeningPlayback?.ended).toBe(true);
   });
 
   it('rejects answer changes after submission', () => {
