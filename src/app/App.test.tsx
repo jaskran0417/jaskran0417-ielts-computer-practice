@@ -39,6 +39,21 @@ describe('App session flow', () => {
     expect(screen.getByRole('button', { name: /Sessions/i })).not.toHaveAttribute('aria-current');
   });
 
+  it('uses the real local importer by default without Supabase configuration', async () => {
+    const user = userEvent.setup();
+    render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
+
+    await user.click(screen.getByRole('button', { name: /Import/i }));
+    await user.upload(
+      screen.getByLabelText('Choose source file'),
+      new File(['1 library\\n2 B\\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
+    );
+
+    expect(await screen.findByText('answers.txt')).toBeInTheDocument();
+    expect(screen.getAllByText('VERIFIED')).toHaveLength(3);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('launches Reading-only into the focused existing exam player', async () => {
     const user = userEvent.setup();
     render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
