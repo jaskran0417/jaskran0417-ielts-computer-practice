@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { readingModuleFromTest } from './module-access';
 import { sampleReadingTest } from './sample-reading';
 
 describe('sample Reading student payload', () => {
   it('contains ordered questions but no protected answers', () => {
-    const questions = sampleReadingTest.modules[0].sections.flatMap((section) =>
+    const questions = readingModuleFromTest(sampleReadingTest).sections.flatMap((section) =>
       section.questionGroups.flatMap((group) => group.questions),
     );
 
