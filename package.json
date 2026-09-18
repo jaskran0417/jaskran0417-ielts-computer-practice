@@ -5,19 +5,25 @@
   "type": "module",
   "engines": { "node": ">=20.19.0" },
   "scripts": {
+    "prepare:ocr": "node scripts/prepare-ocr-assets.mjs",
+    "predev": "npm run prepare:ocr",
     "dev": "vite",
+    "prebuild": "npm run prepare:ocr",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/prepare-ocr-assets.mjs --verify-dist",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
+    "@tesseract.js-data/eng": "1.0.0",
     "idb": "^8.0.3",
     "pdfjs-dist": "4.10.38",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tesseract.js": "6.0.1"
+    "tesseract.js": "6.0.1",
+    "tesseract.js-core": "6.0.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
