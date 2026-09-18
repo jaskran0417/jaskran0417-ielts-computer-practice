@@ -3,55 +3,71 @@ import {
   ImportWorkspace,
   type ImportFileProcessor,
 } from './ImportWorkspace';
-import { IndexedDbImportRepository } from './local/indexeddb-import-repository';
 import type {
-  ImportDraft,
-  ImportRepository,
-} from './local/import-repository';
+  ImportBundle,
+  ImportModule,
+  ImportSourceRole,
+  PageRange,
+} from './bundle/types';
+import { IndexedDbImportBundleRepository } from './local/indexeddb-import-bundle-repository';
+import type { ImportBundleRepository } from './local/import-bundle-repository';
 
 export interface ImportWorkspaceContainerProps {
   processFile: ImportFileProcessor;
-  repository?: ImportRepository;
+  repository?: ImportBundleRepository;
+  now?: () => number;
+  createId?: () => string;
 }
 
 type LoadState =
-  | { status: 'LOADING'; draft: null }
-  | { status: 'READY'; draft: ImportDraft | null };
+  | { status: 'LOADING'; bundle: null }
+  | { status: 'READY'; bundle: ImportBundle | null };
 
 function errorMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : 'Unable to access local import storage';
 }
 
+function defaultCreateId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function ImportWorkspaceContainer({
   processFile,
   repository,
+  now = Date.now,
+  createId = defaultCreateId,
 }: ImportWorkspaceContainerProps) {
-  const defaultRepository = useMemo(() => new IndexedDbImportRepository(), []);
+  const defaultRepository = useMemo(() => new IndexedDbImportBundleRepository(), []);
   const imports = repository ?? defaultRepository;
   const [loadState, setLoadState] = useState<LoadState>({
     status: 'LOADING',
-    draft: null,
+    bundle: null,
   });
+  const [isImporting, setIsImporting] = useState(false);
   const [storageStatus, setStorageStatus] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     void imports
-      .listDrafts()
-      .then((drafts) => {
+      .listBundles()
+      .then((bundles) => {
         if (!cancelled) {
           setLoadState({
             status: 'READY',
-            draft: drafts[0] ?? null,
+            bundle: bundles[0] ?? null,
           });
         }
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
           setStorageError(errorMessage(cause));
-          setLoadState({ status: 'READY', draft: null });
+          setLoadState({ status: 'READY', bundle: null });
         }
       });
 
@@ -60,25 +76,110 @@ export function ImportWorkspaceContainer({
     };
   }, [imports]);
 
-  function persistDraft(draft: ImportDraft) {
+  function persistBundle(bundle: ImportBundle) {
     setStorageError(null);
     setStorageStatus('Saving locally…');
 
     void imports
-      .saveDraft(draft)
-      .then(() => {
-        setStorageStatus('Saved locally');
-      })
+      .saveBundle(bundle)
+      .then(() => setStorageStatus('Saved locally'))
       .catch((cause: unknown) => {
         setStorageStatus(null);
         setStorageError(errorMessage(cause));
       });
   }
 
+  function setAndPersist(bundle: ImportBundle) {
+    setLoadState({ status: 'READY', bundle });
+    persistBundle(bundle);
+  }
+
+  function createBundle(module: ImportModule, title: string) {
+    const createdAtMs = now();
+    const bundleId = createId();
+    const testId = createId();
+    const next: ImportBundle = {
+      id: bundleId,
+      testId,
+      module,
+      title,
+      sourceDocuments: [],
+      assignments: [],
+      structuredDraft: null,
+      status: 'COLLECTING_SOURCES',
+      updatedAtMs: createdAtMs,
+    };
+
+    setAndPersist(next);
+  }
+
+  async function addSource(file: File) {
+    if (loadState.status !== 'READY' || !loadState.bundle) return;
+
+    setIsImporting(true);
+    setOperationError(null);
+
+    try {
+      const extracted = await processFile(file);
+      const sources = extracted.sourceDocuments;
+
+      if (sources.length === 0) {
+        throw new Error('The selected file produced no source document');
+      }
+
+      const next: ImportBundle = {
+        ...loadState.bundle,
+        sourceDocuments: [...loadState.bundle.sourceDocuments, ...sources],
+        updatedAtMs: now(),
+      };
+      setAndPersist(next);
+    } catch (cause) {
+      setOperationError(errorMessage(cause));
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  function assignSourceRole(input: {
+    documentId: string;
+    role: ImportSourceRole;
+    pageRanges: PageRange[];
+  }) {
+    if (loadState.status !== 'READY' || !loadState.bundle) return;
+
+    const next: ImportBundle = {
+      ...loadState.bundle,
+      assignments: [
+        ...loadState.bundle.assignments,
+        {
+          id: `${input.documentId}-${input.role}-${createId()}`,
+          documentId: input.documentId,
+          role: input.role,
+          pageRanges: input.pageRanges,
+          requiredForPublication:
+            input.role !== 'SUPPORTING_EVIDENCE' &&
+            input.role !== 'STAFF_MARKING_GUIDE',
+        },
+      ],
+      updatedAtMs: now(),
+    };
+
+    setAndPersist(next);
+  }
+
+  function startStructuring() {
+    if (loadState.status !== 'READY' || !loadState.bundle) return;
+    setAndPersist({
+      ...loadState.bundle,
+      status: 'STRUCTURING',
+      updatedAtMs: now(),
+    });
+  }
+
   if (loadState.status === 'LOADING') {
     return (
       <section className="import-loading" aria-live="polite">
-        Loading local import draft…
+        Loading local import bundle…
       </section>
     );
   }
@@ -100,9 +201,13 @@ export function ImportWorkspaceContainer({
         </div>
       ) : null}
       <ImportWorkspace
-        processFile={processFile}
-        initialDraft={loadState.draft}
-        onDraftChange={persistDraft}
+        bundle={loadState.bundle}
+        isImporting={isImporting}
+        error={operationError}
+        onCreateBundle={createBundle}
+        onAddSource={addSource}
+        onAssignSourceRole={assignSourceRole}
+        onStructure={startStructuring}
       />
     </>
   );
