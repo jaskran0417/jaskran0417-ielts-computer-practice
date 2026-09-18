@@ -28,24 +28,47 @@ function numberedPrompts(text: string): Map<number, string> {
   return prompts;
 }
 
-function passageTextForBlock(
-  block: ReadingSourceBlock | undefined,
+function passageTextForBlocks(
+  blocks: ReadingSourceBlock[],
   passageNumber: number,
+  passageStartPage: number,
+  nextPassageStartPage: number,
 ): string[] {
-  if (!block) return [];
+  const passageBlocks = blocks
+    .filter(
+      (block) =>
+        block.pageNumber >= passageStartPage &&
+        block.pageNumber < nextPassageStartPage,
+    )
+    .sort((left, right) => left.pageNumber - right.pageNumber);
 
-  const lines = block.text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const result: string[] = [];
 
-  const passageIndex = lines.findIndex((line) =>
-    new RegExp(`^Passage\\s+${passageNumber}\\b`, 'i').test(line),
-  );
+  for (const block of passageBlocks) {
+    let lines = block.text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
 
-  if (passageIndex < 0) return [];
+    if (block.pageNumber === passageStartPage) {
+      const passageIndex = lines.findIndex((line) =>
+        new RegExp(`^Passage\\s+${passageNumber}\\b`, 'i').test(line),
+      );
+      if (passageIndex < 0) continue;
+      lines = lines.slice(passageIndex + 2);
+    }
 
-  return lines.slice(passageIndex + 2);
+    const firstQuestionIndex = lines.findIndex((line) =>
+      /^Questions?\s+\d+\s*[-–]\s*\d+/i.test(line),
+    );
+    if (firstQuestionIndex >= 0) {
+      lines = lines.slice(0, firstQuestionIndex);
+    }
+
+    result.push(...lines);
+  }
+
+  return result;
 }
 
 function hasVisual(
@@ -185,22 +208,16 @@ export function buildStructuredReadingDraft(input: {
           (group): group is ReadingQuestionGroupDraft => group !== null,
         );
 
-      const passageBlock = input.blocks.find(
-        (block) =>
-          block.pageNumber === passageStartPage &&
-          new RegExp(`^\\s*Passage\\s+${passage.passageNumber}\\b`, 'im').test(
-            block.text,
-          ),
-      );
-
       return {
         id: `section-${passage.passageNumber}`,
         passageNumber: passage.passageNumber,
         title: passage.title,
         pageNumbers: passage.pageNumbers,
-        passageText: passageTextForBlock(
-          passageBlock,
+        passageText: passageTextForBlocks(
+          input.blocks,
           passage.passageNumber,
+          passageStartPage,
+          nextPassageStartPage,
         ),
         questionGroups,
         evidence: passage.evidence,
