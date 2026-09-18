@@ -10,6 +10,7 @@ import type {
   StructureReviewItem,
   StructuredReadingDraft,
   StructuredReadingSectionDraft,
+  StructuredQuestionGroupDraft,
 } from './reading-structure';
 
 const FIRST_QUESTION_PATTERN = /\bQuestions?\s+\d+\s*[-–—]\s*\d+\b/i;
@@ -150,7 +151,7 @@ export function parseReadingStructure(
     }
 
     const recognition = recognizeQuestionType(range.sourceText);
-    const group = {
+    const group: StructuredQuestionGroupDraft = {
       id: `questions-${range.start}-${range.end}`,
       range: [range.start, range.end] as const,
       pageNumber: range.pageNumber,
