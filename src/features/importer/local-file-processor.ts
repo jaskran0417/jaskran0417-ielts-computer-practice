@@ -54,6 +54,13 @@ function isImage(file: File): boolean {
   );
 }
 
+function isAudio(file: File): boolean {
+  return (
+    file.type.startsWith('audio/') ||
+    ['.mp3', '.wav', '.m4a'].includes(extensionOf(file.name))
+  );
+}
+
 function isAnswerKeyText(file: File): boolean {
   return (
     file.type === 'text/plain' ||
@@ -458,6 +465,13 @@ export function createLocalImportProcessor(
           verification,
         },
       ];
+    } else if (isAudio(file)) {
+      if (file.size === 0) {
+        throw new Error('Audio source is empty');
+      }
+
+      kind = 'AUDIO';
+      fields = [];
     } else if (isAnswerKeyText(file)) {
       kind = 'ANSWER_KEY';
       const text = normalizeAnswerKeySource(file, new TextDecoder().decode(originalSourceBytes));
