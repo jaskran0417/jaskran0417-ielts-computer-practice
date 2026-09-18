@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { ImportBundle } from './bundle/domain';
@@ -368,5 +368,167 @@ describe('ImportWorkspace', () => {
     expect(screen.getByText('Question 1 visual anchor')).toBeInTheDocument();
     expect(screen.getByText('Question 1 accepted answer')).toBeInTheDocument();
     expect(screen.queryByText(/Question type for 1-1 requires review/)).not.toBeInTheDocument();
+  });
+
+  it('confirms an ambiguous protected answer inline on its semantic review card', async () => {
+    const user = userEvent.setup();
+    const source = {
+      id: 'answer-review-source',
+      name: 'answer-review.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'answer-review-bundle',
+      module: 'READING',
+      title: 'Answer Review',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verified = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: { documentId: source.id, pageNumber, method: 'PDF_TEXT' as const },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'answer-review-draft',
+      testId: 'answer-review-test',
+      sourceDocuments: [source],
+      fields: [
+        verified('ar1', 1, ['Passage 1', 'A Passage', 'Ninety percent is plastic.'].join('\n')),
+        verified('ar2', 2, [
+          'Questions 1-1',
+          'Answer the questions using NO MORE THAN TWO WORDS AND/OR A NUMBER.',
+          '1. What proportion is plastic?',
+        ].join('\n')),
+        verified('ar3', 3, ['Answers', '1. ninety/90 percent/per cent/%'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    const reviewText = screen.getByText('Question 1 accepted answer');
+    const card = reviewText.closest('article');
+    expect(card).not.toBeNull();
+    const cardUi = within(card as HTMLElement);
+    expect(cardUi.getByText('REVIEW_REQUIRED')).toBeInTheDocument();
+
+    await user.click(cardUi.getByRole('button', { name: 'Review & Confirm Question 1 accepted answer' }));
+    const input = cardUi.getByRole('textbox', { name: 'Accepted answers' });
+    await user.clear(input);
+    await user.type(input, 'ninety percent | 90 percent | 90%');
+    await user.click(cardUi.getByRole('button', { name: 'Confirm accepted answers' }));
+
+    expect(cardUi.getByText('CONFIRMED')).toBeInTheDocument();
+  });
+
+  it('confirms a visual answer position inline on the visual review card', async () => {
+    const user = userEvent.setup();
+    const source = {
+      id: 'anchor-source',
+      name: 'anchor.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 100,
+      kind: 'PDF' as const,
+      createdAtMs: 1,
+    };
+    const bundle: ImportBundle = {
+      id: 'anchor-bundle',
+      module: 'READING',
+      title: 'Anchor Reading',
+      sourceDocuments: [source],
+      assignments: [
+        { sourceDocumentId: source.id, role: 'QUESTION_MATERIAL', pageRanges: [{ startPage: 1, endPage: 2 }] },
+        { sourceDocumentId: source.id, role: 'ANSWER_KEY', pageRanges: [{ startPage: 3, endPage: 3 }] },
+      ],
+      status: 'STRUCTURING',
+      updatedAtMs: 1,
+    };
+    const verified = (id: string, pageNumber: number, value: string) => ({
+      id,
+      kind: 'PASSAGE_TEXT' as const,
+      critical: true,
+      verification: {
+        state: 'VERIFIED' as const,
+        normalizedValue: value,
+        reasons: [],
+        passA: {
+          value,
+          confidence: null,
+          evidence: { documentId: source.id, pageNumber, method: 'PDF_TEXT' as const },
+        },
+      },
+    });
+    const draft: ImportDraft = {
+      id: 'anchor-draft',
+      testId: 'anchor-test',
+      sourceDocuments: [source],
+      visualAssets: [{
+        id: 'anchor-diagram',
+        sourceDocumentId: source.id,
+        pageNumber: 2,
+        kind: 'DIAGRAM',
+        mediaType: 'image/png',
+        dataUrl: 'data:image/png;base64,cGFnZQ==',
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      }],
+      fields: [
+        verified('an1', 1, ['Passage 1', 'A Visual Passage', 'The corona is outermost.'].join('\n')),
+        verified('an2', 2, [
+          'Questions 1-1',
+          'Label the diagram below. Choose NO MORE THAN TWO WORDS from the passage.',
+          '1. Outer layer',
+        ].join('\n')),
+        verified('an3', 3, ['Answers', '1. corona'].join('\n')),
+      ],
+      updatedAtMs: 1,
+    };
+
+    render(
+      <ImportWorkspace
+        processFile={async () => draft}
+        initialBundle={bundle}
+        initialDraft={draft}
+      />,
+    );
+
+    const label = screen.getByText('Question 1 visual anchor');
+    const card = label.closest('article');
+    expect(card).not.toBeNull();
+    const cardUi = within(card as HTMLElement);
+    await user.click(cardUi.getByRole('button', { name: 'Set position for Question 1' }));
+
+    const image = cardUi.getByRole('img', { name: 'Source visual for question 1' });
+    Object.defineProperty(image, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+    fireEvent.click(image, { clientX: 120, clientY: 80 });
+    await user.click(cardUi.getByRole('button', { name: 'Confirm answer position' }));
+
+    expect(cardUi.queryByText('REVIEW_REQUIRED')).not.toBeInTheDocument();
   });
 });
