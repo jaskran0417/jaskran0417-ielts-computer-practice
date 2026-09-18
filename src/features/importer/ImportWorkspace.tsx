@@ -768,6 +768,7 @@ export function ImportWorkspace({
                         <VisualAnchorEditor
                           questionNumber={item.questionNumber}
                           imageUrl={visualAsset.dataUrl}
+                          visualKind={visualAsset.kind}
                           initialAnchor={
                             bundle?.visualAnchorConfirmations?.[`q-${item.questionNumber}`]
                           }
