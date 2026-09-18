@@ -11,6 +11,7 @@ function bundle(overrides: Partial<ImportBundle> = {}): ImportBundle {
     module: 'READING',
     title: 'Reading Test 1',
     sourceDocuments: [],
+    extractedFields: [],
     assignments: [],
     structuredDraft: null,
     status: 'COLLECTING_SOURCES',
