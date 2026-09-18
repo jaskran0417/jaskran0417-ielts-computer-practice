@@ -51,7 +51,7 @@ export default function App({
   const defaultImportProcessor = useMemo(() => createLocalImportProcessor(), []);
   const defaultTestCatalog = useMemo<TestCatalogRepository>(() => {
     if (isSupabaseConfigured && supabase) {
-      return new SupabaseTestCatalog(createSupabaseCatalogDataSource(supabase));
+      return new SupabaseTestCatalog(createSupabaseCatalogSource(supabase));
     }
     return new IndexedDbTestCatalog();
   }, []);
