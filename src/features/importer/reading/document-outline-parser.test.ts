@@ -36,6 +36,15 @@ describe('parseDocumentOutline', () => {
     expect(result.reviewItems).toEqual([]);
   });
 
+  it('does not treat a Passage reference inside question instructions as a new passage', () => {
+    const result = parseDocumentOutline([
+      page(7, 'Questions 20-24 Passage 2 has six sections labelled A-F'),
+    ]);
+
+    expect(result.passages).toEqual([]);
+    expect(result.reviewItems).toEqual([]);
+  });
+
   it('surfaces duplicate passage numbers for review', () => {
     const result = parseDocumentOutline([
       page(1, 'Passage 1 First'),
