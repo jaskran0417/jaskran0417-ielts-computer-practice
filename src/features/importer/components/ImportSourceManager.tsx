@@ -11,9 +11,9 @@ export interface ImportSourceManagerProps {
   onCreate(module: ImportModule, title: string): void;
   onAddFiles(files: File[]): void;
   onAssign(assignment: ImportSourceAssignment): void;
-  onRemoveSource(sourceDocumentId: string): void;
-  onRemoveAssignment(index: number): void;
-  onClearImport(): void;
+  onRemoveSource?(sourceDocumentId: string): void;
+  onRemoveAssignment?(index: number): void;
+  onClearImport?(): void;
 }
 
 const MODULES: Array<{ module: ImportModule; label: string }> = [
@@ -121,7 +121,7 @@ export function ImportSourceManager({
         <button
           type="button"
           className="secondary-action"
-          onClick={onClearImport}
+          onClick={() => onClearImport?.()}
           aria-label="Start a new import"
         >
           New import
@@ -158,7 +158,7 @@ export function ImportSourceManager({
             className="secondary-action"
             onClick={() => {
               if (!selectedSource) return;
-              onRemoveSource(selectedSource.id);
+              onRemoveSource?.(selectedSource.id);
               setSourceDocumentId('');
             }}
           >
@@ -226,7 +226,7 @@ export function ImportSourceManager({
                 <button
                   type="button"
                   className="secondary-action"
-                  onClick={() => onRemoveAssignment(index)}
+                  onClick={() => onRemoveAssignment?.(index)}
                   aria-label={`Remove ${assignment.role} assignment`}
                 >
                   Remove assignment
