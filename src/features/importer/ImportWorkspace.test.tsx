@@ -181,10 +181,10 @@ describe('ImportWorkspace', () => {
           critical: true,
           verification: {
             state: 'VERIFIED',
-            normalizedValue: 'Passage 1\\nA Test Passage\\nThe outer layer is the corona.',
+            normalizedValue: ['Passage 1', 'A Test Passage', 'The outer layer is the corona.'].join('\n'),
             reasons: [],
             passA: {
-              value: 'Passage 1\\nA Test Passage\\nThe outer layer is the corona.',
+              value: ['Passage 1', 'A Test Passage', 'The outer layer is the corona.'].join('\n'),
               confidence: null,
               evidence: {
                 documentId: source.id,
@@ -201,11 +201,11 @@ describe('ImportWorkspace', () => {
           verification: {
             state: 'VERIFIED',
             normalizedValue:
-              'Questions 1-1\\nAnswer the questions using NO MORE THAN TWO WORDS.\\n1. What is the outer layer called?',
+              ['Questions 1-1', 'Answer the questions using NO MORE THAN TWO WORDS.', '1. What is the outer layer called?'].join('\n'),
             reasons: [],
             passA: {
               value:
-                'Questions 1-1\\nAnswer the questions using NO MORE THAN TWO WORDS.\\n1. What is the outer layer called?',
+                ['Questions 1-1', 'Answer the questions using NO MORE THAN TWO WORDS.', '1. What is the outer layer called?'].join('\n'),
               confidence: null,
               evidence: {
                 documentId: source.id,
