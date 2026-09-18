@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptState } from '../../exam-engine/types';
@@ -19,6 +19,16 @@ class EmptyAttemptRepository implements AttemptRepository {
   async saveAttempt(_attempt: ExamAttemptState) {}
 
   async deleteAttempt() {}
+}
+
+class SavedAttemptRepository extends EmptyAttemptRepository {
+  constructor(private readonly saved: ExamAttemptState) {
+    super();
+  }
+
+  async loadActiveAttempt() {
+    return this.saved;
+  }
 }
 
 function renderReading(repository: AttemptRepository, nowMs?: number) {
@@ -52,6 +62,73 @@ describe('Reading exam', () => {
 
     await user.click(screen.getByRole('button', { name: 'Question 1' }));
     expect(screen.getByRole('radio', { name: /British Museum/i })).toBeChecked();
+  });
+
+  it('turns a passage text selection into a removable highlight', async () => {
+    const user = userEvent.setup();
+    renderReading(new EmptyAttemptRepository());
+
+    const passageText = await screen.findByText(/Cities around the world/i);
+    const paragraph = passageText.closest('p');
+    expect(paragraph).not.toBeNull();
+
+    const textNode = passageText.firstChild;
+    expect(textNode).not.toBeNull();
+
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.setStart(textNode!, 0);
+    range.setEnd(textNode!, 6);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    fireEvent.mouseUp(paragraph!);
+
+    const highlightButton = screen.getByRole('button', {
+      name: 'Highlight selection',
+    });
+    expect(highlightButton).toBeEnabled();
+    await user.click(highlightButton);
+
+    const highlighted = paragraph!.querySelector('.passage-highlight');
+    expect(highlighted).not.toBeNull();
+    expect(highlighted).toHaveTextContent('Cities');
+
+    await user.click(highlighted as HTMLElement);
+    expect(paragraph!.querySelector('.passage-highlight')).toBeNull();
+  });
+
+  it('restores saved highlights and notes into the Reading UI', async () => {
+    const attempt = {
+      ...createAttempt(sampleReadingTest, 1_000),
+      highlights: [{
+        id: 'highlight-1',
+        passageId: 'passage-1',
+        paragraphIndex: 0,
+        startOffset: 0,
+        endOffset: 6,
+        text: 'Cities',
+      }],
+      notes: [{
+        id: 'note-1',
+        passageId: 'passage-1',
+        paragraphIndex: 0,
+        startOffset: 0,
+        endOffset: 6,
+        quote: 'Cities',
+        body: 'Opening concept',
+        updatedAtMs: 2_000,
+      }],
+    };
+
+    const user = userEvent.setup();
+    renderReading(new SavedAttemptRepository(attempt));
+
+    const highlighted = await screen.findByText('Cities');
+    expect(highlighted).toHaveClass('passage-highlight');
+
+    await user.click(screen.getByRole('button', { name: 'Notes 1' }));
+    expect(screen.getByText('Opening concept')).toBeInTheDocument();
+    expect(screen.getByText('“Cities”')).toBeInTheDocument();
   });
 
   it('updates the visible timer while the student is idle', async () => {
