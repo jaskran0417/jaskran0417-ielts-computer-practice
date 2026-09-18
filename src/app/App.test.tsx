@@ -44,8 +44,9 @@ describe('App session flow', () => {
     render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
 
     await user.click(screen.getByRole('button', { name: /Import/i }));
+    await user.click(await screen.findByRole('button', { name: 'Reading' }));
     await user.upload(
-      await screen.findByLabelText('Choose source file'),
+      screen.getByLabelText('Add source files'),
       new File(['1 library\n2 B\n3 TRUE'], 'answers.txt', { type: 'text/plain' }),
     );
 
