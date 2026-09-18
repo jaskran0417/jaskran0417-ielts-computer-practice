@@ -35,6 +35,39 @@ describe('QuestionRenderer', () => {
     expect(onChange).toHaveBeenLastCalledWith('FALSE');
   });
 
+  it('renders Yes/No/Not Given as exclusive choices', async () => {
+    const onChange = renderQuestion({
+      id: 'q-11',
+      number: 11,
+      type: 'YES_NO_NOT_GIVEN',
+      prompt: 'The writer agrees with the statement.',
+    });
+
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    expect(onChange).toHaveBeenLastCalledWith('NO');
+  });
+
+  it('renders multiple-select choices and returns the selected ids', async () => {
+    const onChange = renderQuestion({
+      id: 'q-12',
+      number: 12,
+      type: 'MULTI_SELECT',
+      prompt: 'Choose two answers.',
+      options: [
+        { id: 'A', label: 'Alpha' },
+        { id: 'B', label: 'Beta' },
+        { id: 'C', label: 'Gamma' },
+      ],
+      minSelections: 2,
+      maxSelections: 2,
+    });
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /Alpha/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /Beta/ }));
+    expect(onChange).toHaveBeenLastCalledWith(['A', 'B']);
+  });
+
   it('renders matching options as a select control', async () => {
     const onChange = renderQuestion({
       id: 'q-20',
