@@ -74,7 +74,7 @@ describe('Reading exam', () => {
     const user = userEvent.setup();
     const { container } = renderReading(new EmptyAttemptRepository());
 
-    const passageButton = screen.getByRole('button', { name: 'Passage' });
+    const passageButton = await screen.findByRole('button', { name: 'Passage' });
     const questionsButton = screen.getByRole('button', { name: 'Questions' });
     const workspace = container.querySelector('.reading-workspace');
 
