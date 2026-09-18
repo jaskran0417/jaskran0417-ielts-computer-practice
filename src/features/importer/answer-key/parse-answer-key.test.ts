@@ -54,4 +54,27 @@ describe('parseAnswerKey', () => {
     expect(question2?.result.state).toBe('REVIEW_REQUIRED');
     expect(result.answers.some((answer) => answer.questionNumber === 2)).toBe(false);
   });
+  it('strips explanatory Extra info notes instead of parsing paragraph numbers as answers', () => {
+    const result = parseAnswerKey([
+      'Answers',
+      '10. F Extra info- para 2: almost entirely, not entirely',
+      '11. T Extra info- para 5',
+      '12. NG Extra info- para 6',
+      '13. NG Extra info- para 7 + 4',
+      '14. T Extra info- para 9',
+      '15. water pollution Extra info- para 1',
+    ].join('\n'));
+
+    expect(result.answers).toEqual([
+      { questionNumber: 10, answer: 'F' },
+      { questionNumber: 11, answer: 'T' },
+      { questionNumber: 12, answer: 'NG' },
+      { questionNumber: 13, answer: 'NG' },
+      { questionNumber: 14, answer: 'T' },
+      { questionNumber: 15, answer: 'water pollution' },
+    ]);
+    expect(result.verification.map((item) => item.questionNumber)).toEqual([
+      10, 11, 12, 13, 14, 15,
+    ]);
+  });
 });
