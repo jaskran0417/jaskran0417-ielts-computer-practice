@@ -179,4 +179,32 @@ describe('Reading option-list parsing', () => {
     ]);
   });
 
+  it('tolerates PDF spacing artifacts around alpha option labels', () => {
+    const options = parseSharedReadingOptions({
+      type: 'MATCHING_SENTENCE_ENDINGS',
+      instructionText: 'Complete each sentence with the correct ending A – C.',
+      pageText: [
+        'A .\u00a0First ending',
+        'B.\u200b Second ending',
+        'C ) Third ending',
+      ].join('\n'),
+    });
+
+    expect(options).toEqual([
+      { id: 'A', label: 'First ending' },
+      { id: 'B', label: 'Second ending' },
+      { id: 'C', label: 'Third ending' },
+    ]);
+  });
+
+  it('derives paragraph labels when PDF extraction inserts non-breaking spacing', () => {
+    expect(
+      parseSharedReadingOptions({
+        type: 'MATCHING_INFORMATION',
+        instructionText:
+          'Passage 3 has six paragraphs labelled\u00a0 A \u200b-\u200b F. Which paragraphs contain the following information?',
+        pageText: '',
+      }),
+    ).toHaveLength(6);
+  });
 });
