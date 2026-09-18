@@ -227,4 +227,32 @@ describe('Reading option-list parsing', () => {
     ]);
   });
 
+  it('does not append example or footer text to the last roman heading', () => {
+    const options = parseSharedReadingOptions({
+      type: 'MATCHING_HEADINGS',
+      instructionText: 'Choose the correct headings for Sections B-F.',
+      pageText: [
+        'List of Headings',
+        'i. Beach garbage from far away',
+        'ii. Fish consumption',
+        'iii. How pollution from outside Oceania reaches the region',
+        'iv. Hypothesizing change',
+        'v. The effect of human migration on the region',
+        'vi. The extent of the plastic problem',
+        'vii. The impact of foreign wildlife on Oceania',
+        'viii. The serious danger posed by climate change',
+        'ix. The spread of Texan pollution',
+        'E.g. Section A - v',
+        'Note: This is not a real IELTS test.',
+      ].join('\n'),
+    });
+
+    expect(options).toHaveLength(9);
+    expect(options[8]).toEqual({
+      id: 'ix',
+      label: 'The spread of Texan pollution',
+    });
+  });
+
+
 });

@@ -183,6 +183,47 @@ describe('Reading import acceptance', () => {
     ]).toEqual(expect.arrayContaining(['queen', 'the queen', 'isabella']));
   });
 
+
+  it('handles the supplied PDF range reference and answer-key footer without creating blockers', () => {
+    const blocks = sourceBlocks().map((block) =>
+      block.pageNumber === 12
+        ? {
+            ...block,
+            text: block.text.replace(
+              'Questions 37-40\n',
+              'Questions 37-40\nLook at the information below (Questions 37-40) and the list of people below.\n',
+            ),
+          }
+        : block,
+    );
+
+    const structuredDraft = buildStructuredReadingDraft({
+      blocks,
+      visualRegions: visualRegions(),
+    });
+    const questions = allDraftQuestions(structuredDraft);
+
+    expect(questions).toHaveLength(40);
+    expect(questions.filter((question) => question.number === 37)).toHaveLength(1);
+    expect(structuredDraft.reviewItems).toEqual([]);
+
+    const parsedTail = parseAnswerKey([
+      'Answers',
+      '37. D',
+      '38. A',
+      '39. E',
+      '40. C',
+      'Note: This is not a real IELTS test. This practice test is for strategy practice.',
+    ].join('\n'));
+
+    expect(parsedTail.answers).toEqual([
+      { questionNumber: 37, answer: 'D' },
+      { questionNumber: 38, answer: 'A' },
+      { questionNumber: 39, answer: 'E' },
+      { questionNumber: 40, answer: 'C' },
+    ]);
+  });
+
   it('converts the synthetic 13-page structure into a safe 40-question runnable Reading test', () => {
     const regions = visualRegions();
     const structuredDraft = buildStructuredReadingDraft({

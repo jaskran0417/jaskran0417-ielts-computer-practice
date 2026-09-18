@@ -31,6 +31,8 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 - Registry-based Reading question rendering.
 - Objective Reading submission and scoring.
 - Imported published tests can be selected instead of using the sample fixture.
+- Persistent passage highlighting and notes are merged and restored through IndexedDB.
+- Compact Reading exam presentation is merged.
 
 ### Reading import / verification
 
@@ -54,7 +56,9 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 - Protected answer package separated from student package.
 - Local publication to IndexedDB.
 - Real-shape regression coverage based on the supplied 13-page Reading PDF structure.
-- Full CI green after the real-PDF fixes.
+- Full CI green after the earlier real-PDF fixes.
+- Precise PDF/image region selection is merged: selected crops are re-extracted and isolated from whole-page fields.
+- Exact supplied-PDF regression hardening covers parenthetical question-range references, trailing answer-key footers, and heading-list terminators.
 
 ## Implemented foundations but not yet fully connected in production
 
@@ -67,7 +71,7 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 
 ### Phase A — Reading completion polish
 
-Completed on `feat/reading-highlights-notes` and ready for merge:
+Completed and merged:
 
 - Persistent passage text highlighting stored in attempt state.
 - Persistent notes attached to selected text or whole-passage context.
@@ -75,6 +79,9 @@ Completed on `feat/reading-highlights-notes` and ready for merge:
 - Annotation restore through IndexedDB.
 - Selection toolbar and notes panel in the Reading player.
 - Backward-compatible restore for attempts created before annotation fields existed.
+- Precise PDF/image region selection and cropped re-extraction.
+- Import cleanup controls, flexible Reading scoring modes, and compact exam UI.
+- Real-PDF parser hardening for duplicate range mentions and trailing answer-key footer text.
 
 Still pending as compatibility/acceptance work:
 
@@ -197,7 +204,7 @@ On every continuation:
 
 ## Current resume point
 
-After the Reading annotation branch is merged, the next implementation phase is:
+After the exact Reading PDF regression hardening is merged, the next implementation phase is:
 
 **Phase B — Listening**.
 

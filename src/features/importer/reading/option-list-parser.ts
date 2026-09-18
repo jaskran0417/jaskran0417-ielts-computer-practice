@@ -105,6 +105,14 @@ function parseRomanOptions(pageText: string): ReadingChoiceOptionDraft[] {
 
     if (!collecting) continue;
 
+    if (
+      /^(?:E\.?\s*g\.?|Example)(?:\s|$)/i.test(line) ||
+      /^After you(?:['’])?ve tried\b/i.test(line) ||
+      /^Note\s*:/i.test(line)
+    ) {
+      break;
+    }
+
     const option = line.match(/^([ivxlcdm]+)\s*[.)]?\s+(.+)$/i);
     if (option) {
       options.push({

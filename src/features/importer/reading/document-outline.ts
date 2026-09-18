@@ -6,7 +6,7 @@ import type {
 } from './types';
 
 const PASSAGE_HEADING = /^\s*Passage\s+(\d+)\s*$/im;
-const QUESTION_RANGE = /Questions?\s+(\d+)\s*[-–]\s*(\d+)/gi;
+const QUESTION_RANGE = /^\s*Questions?\s+(\d+)\s*[-–]\s*(\d+)\b/gim;
 
 function passageTitle(text: string, passageNumber: number): string | null {
   const lines = text
