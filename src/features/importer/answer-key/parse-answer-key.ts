@@ -23,6 +23,13 @@ export interface AnswerKeyParserOptions {
   parserB?: AnswerKeyParser;
 }
 
+function stripAnswerCommentary(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+Extra\s+info\b.*$/i, '').trimEnd())
+    .join('\n');
+}
+
 function parseEntriesWithinLine(line: string): ParsedAnswer[] {
   const entries: ParsedAnswer[] = [];
   const pattern = /(\d{1,3})[.)]?\s+(.+?)(?=(?:\s{2,}|\t+)\d{1,3}[.)]?\s+|$)/g;
@@ -39,13 +46,13 @@ function parseEntriesWithinLine(line: string): ParsedAnswer[] {
 }
 
 export const parseAnswerKeyByLines: AnswerKeyParser = (text) =>
-  text
+  stripAnswerCommentary(text)
     .split(/\r?\n/)
     .flatMap((line) => parseEntriesWithinLine(line.trim()))
     .sort((a, b) => a.questionNumber - b.questionNumber);
 
 export const parseAnswerKeyByTokens: AnswerKeyParser = (text) => {
-  const normalized = text.replace(/\r/g, ' ').trim();
+  const normalized = stripAnswerCommentary(text).replace(/\r/g, ' ').trim();
   const entries: ParsedAnswer[] = [];
   const pattern = /(\d{1,3})[.)]?\s+(.+?)(?=\s+\d{1,3}[.)]?\s+|$)/gs;
 
