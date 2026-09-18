@@ -72,25 +72,47 @@ function expandSimpleSlash(body: string): string[] | null {
   });
 }
 
+function expandBodyAlternatives(body: string): string[] | null {
+  const spacedAlternatives = body
+    .split(/\s+\/\s+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (spacedAlternatives.length <= 1) {
+    return expandSimpleSlash(body);
+  }
+
+  const expanded: string[] = [];
+  for (const alternative of spacedAlternatives) {
+    const values = expandSimpleSlash(alternative);
+    if (!values) return null;
+    expanded.push(...values);
+  }
+  return expanded;
+}
+
 function expandAnswer(raw: string): string[] | null {
   const normalizedRaw = raw.trim();
   const optionalPrefix = normalizedRaw.match(/^\(([^)]+)\)\s+(.+)$/);
 
   const prefix = optionalPrefix?.[1]?.trim();
   const body = optionalPrefix?.[2]?.trim() ?? normalizedRaw;
-  const bodyAlternatives = expandSimpleSlash(body);
+  const spacedParts = body.split(/\s+\/\s+/).map((value) => value.trim()).filter(Boolean);
+  const bodyAlternatives = expandBodyAlternatives(body);
   if (!bodyAlternatives) return null;
 
   const values = [...bodyAlternatives];
   if (prefix) {
-    for (const value of bodyAlternatives) {
+    const prefixTargets = spacedParts.length > 1
+      ? expandSimpleSlash(spacedParts[0] ?? '') ?? []
+      : bodyAlternatives;
+    for (const value of prefixTargets) {
       values.push(`${prefix} ${value}`);
     }
   }
 
   return unique(values);
 }
-
 export function parseAnswerExpression(input: {
   questionNumber: number;
   raw: string;
