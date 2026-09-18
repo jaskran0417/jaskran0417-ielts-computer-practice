@@ -32,6 +32,37 @@ function readingBundle(): ImportBundle {
 }
 
 describe('ImportSourceManager', () => {
+  it('uses the first newly added source without requiring a reload', async () => {
+    const user = userEvent.setup();
+    const onAssign = vi.fn();
+    const empty = { ...readingBundle(), sourceDocuments: [] };
+    const { rerender } = render(
+      <ImportSourceManager
+        bundle={empty}
+        onCreate={vi.fn()}
+        onAddFiles={vi.fn()}
+        onAssign={onAssign}
+      />,
+    );
+
+    rerender(
+      <ImportSourceManager
+        bundle={readingBundle()}
+        onCreate={vi.fn()}
+        onAddFiles={vi.fn()}
+        onAssign={onAssign}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Assign pages' }));
+
+    expect(onAssign).toHaveBeenCalledWith({
+      sourceDocumentId: 'pdf-1',
+      role: 'QUESTION_MATERIAL',
+      pageRanges: [{ startPage: 1, endPage: 1 }],
+    });
+  });
+
   it('requires the administrator to choose Reading explicitly', async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn();
