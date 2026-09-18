@@ -115,6 +115,25 @@ describe('QuestionRenderer', () => {
     expect(screen.getByRole('textbox', { name: 'Question 1 answer' })).toBeInTheDocument();
   });
 
+  it('disables answer controls after the exam is no longer active', () => {
+    render(
+      <QuestionRenderer
+        question={{
+          id: 'q-15',
+          number: 15,
+          type: 'SHORT_ANSWER',
+          prompt: 'Answer',
+        }}
+        value=""
+        onChange={vi.fn()}
+        disabled
+        assetUrlById={{}}
+      />,
+    );
+
+    expect(screen.getByRole('textbox')).toBeDisabled();
+  });
+
   it('renders table completion against the resolved table visual asset', () => {
     renderQuestion({
       id: 'q-28',
