@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import fixture from '../../../../tests/fixtures/reading-import/fixture.json';
 import {
   parseSharedReadingOptions,
   parseSingleChoiceOptions,
@@ -159,4 +160,23 @@ describe('Reading option-list parsing', () => {
       { id: 'D', label: 'Delta' },
     ]);
   });
+  it('parses the exact matching-headings list from the 40-question fixture', () => {
+    const pageText = fixture.blocks.find(
+      (block) => block.pageNumber === 7,
+    )?.text ?? '';
+
+    expect(
+      parseSharedReadingOptions({
+        type: 'MATCHING_HEADINGS',
+        instructionText:
+          'Choose the correct heading for each section from the list of headings below.',
+        pageText,
+      }),
+    ).toEqual([
+      { id: 'i', label: 'Heading one' },
+      { id: 'ii', label: 'Heading two' },
+      { id: 'iii', label: 'Heading three' },
+    ]);
+  });
+
 });
