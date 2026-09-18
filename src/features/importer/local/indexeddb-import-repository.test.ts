@@ -16,7 +16,7 @@ function draft(overrides: Partial<ImportDraft> = {}): ImportDraft {
         sizeBytes: 2048,
         kind: 'PDF',
         createdAtMs: 1_000,
-        sourceBlob: new Blob(['original-pdf'], { type: 'application/pdf' }),
+        sourceBytes: new TextEncoder().encode('original-pdf').buffer,
       },
     ],
     fields: [
@@ -57,8 +57,8 @@ describe('IndexedDbImportRepository', () => {
     await repository.saveDraft(original);
     const restored = await repository.loadDraft(original.id);
     expect(restored).toEqual(original);
-    expect(restored?.sourceDocuments[0].sourceBlob).toBeInstanceOf(Blob);
-    expect(await restored?.sourceDocuments[0].sourceBlob?.text()).toBe('original-pdf');
+    expect(restored?.sourceDocuments[0].sourceBytes).toBeInstanceOf(ArrayBuffer);
+    expect(new TextDecoder().decode(restored?.sourceDocuments[0].sourceBytes)).toBe('original-pdf');
 
     await repository.deleteDraft(original.id);
     expect(await repository.loadDraft(original.id)).toBeNull();
