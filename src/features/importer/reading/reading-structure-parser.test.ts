@@ -144,4 +144,101 @@ describe('buildStructuredReadingDraft', () => {
     expect(draft.sections[0]?.passageText.join(' ')).not.toContain('Questions 1-1');
   });
 
+
+  it('attaches shared matching options even when they appear later on the same page', () => {
+    const draft = buildStructuredReadingDraft({
+      blocks: [
+        {
+          pageNumber: 1,
+          text: ['Passage 1', 'A passage', 'Passage text.'].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 1, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 4,
+          text: [
+            'Questions 5-9',
+            'Complete each sentence with the correct ending A-I below.',
+            '5. Stem five',
+            '6. Stem six',
+            '7. Stem seven',
+            '8. Stem eight',
+            '9. Stem nine',
+            'Questions 10-14',
+            'Do the following statements agree? TRUE FALSE NOT GIVEN',
+            '10. Statement ten',
+            '11. Statement eleven',
+            '12. Statement twelve',
+            '13. Statement thirteen',
+            '14. Statement fourteen',
+            'A. Ending alpha',
+            'B. Ending bravo',
+            'C. Ending charlie',
+            'D. Ending delta',
+            'E. Ending echo',
+            'F. Ending foxtrot',
+            'G. Ending golf',
+            'H. Ending hotel',
+            'I. Ending india',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 4, method: 'PDF_TEXT' }],
+        },
+      ],
+      visualRegions: [],
+    });
+
+    const group = draft.sections[0]?.questionGroups.find(
+      (candidate) => candidate.startQuestion === 5,
+    );
+
+    expect(group?.questions[0]?.options).toHaveLength(9);
+    expect(group?.questions[0]?.options?.[0]).toEqual({
+      id: 'A',
+      label: 'Ending alpha',
+    });
+    expect(group?.questions[4]?.options?.[8]).toEqual({
+      id: 'I',
+      label: 'Ending india',
+    });
+  });
+
+  it('attaches per-question A-D options to single-choice questions', () => {
+    const draft = buildStructuredReadingDraft({
+      blocks: [
+        {
+          pageNumber: 1,
+          text: ['Passage 1', 'A passage', 'Passage text.'].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 1, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 2,
+          text: [
+            'Questions 25-26',
+            'Choose the appropriate letter A, B, C or D.',
+            '25. First question?',
+            'A. Alpha',
+            'B. Bravo',
+            'C. Charlie',
+            'D. Delta',
+            '26. Second question?',
+            'A. One',
+            'B. Two',
+            'C. Three',
+            'D. Four',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 2, method: 'PDF_TEXT' }],
+        },
+      ],
+      visualRegions: [],
+    });
+
+    const questions = draft.sections[0]?.questionGroups[0]?.questions ?? [];
+    expect(questions[0]?.options).toEqual([
+      { id: 'A', label: 'Alpha' },
+      { id: 'B', label: 'Bravo' },
+      { id: 'C', label: 'Charlie' },
+      { id: 'D', label: 'Delta' },
+    ]);
+    expect(questions[1]?.options?.[3]).toEqual({ id: 'D', label: 'Four' });
+  });
+
 });
