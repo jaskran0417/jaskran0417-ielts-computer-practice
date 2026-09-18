@@ -202,8 +202,26 @@
 }
 
 .import-field-card-heading > strong {
+  min-width: 0;
   font-size: 11px;
   letter-spacing: 0.04em;
+}
+
+.import-field-card-heading-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.import-review-action {
+  min-height: 23px;
+  padding: 0 8px;
+  white-space: nowrap;
+  font-size: 10px;
 }
 
 .import-field-card > p {

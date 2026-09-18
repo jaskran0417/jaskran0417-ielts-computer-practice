@@ -94,4 +94,29 @@ describe('parseReadingDocumentOutline', () => {
     expect(outline.questionRanges[1]?.instructionText).not.toContain('correct ending A-I');
   });
 
+  it('does not treat an instruction sentence that starts with Passage 3 as a passage heading', () => {
+    const outline = parseReadingDocumentOutline([
+      {
+        pageNumber: 9,
+        text: ['Passage 3', 'Spanish Exploration and Conquest', 'Passage text'].join('\n'),
+        evidence: [],
+      },
+      {
+        pageNumber: 11,
+        text: [
+          'Questions 32-36',
+          'Passage 3 has six paragraphs labelled A-F.',
+          'Which paragraphs contain the following information?',
+        ].join('\n'),
+        evidence: [],
+      },
+    ]);
+
+    expect(outline.passages).toHaveLength(1);
+    expect(outline.passages[0]).toMatchObject({
+      passageNumber: 3,
+      title: 'Spanish Exploration and Conquest',
+      pageNumbers: [9],
+    });
+  });
 });

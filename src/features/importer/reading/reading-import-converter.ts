@@ -22,6 +22,96 @@ function resolved(field: ImportFieldRecord): boolean {
   );
 }
 
+function parseConfirmedOptions(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line) => {
+      const match = line.match(/^([A-Za-z]+)\s*[.)]\s*(.+)$/);
+      return match?.[1] && match[2]
+        ? [{ id: match[1], label: match[2].trim() }]
+        : [];
+    });
+}
+
+function applySemanticStructureConfirmations(
+  draft: ReturnType<typeof buildStructuredReadingDraft>,
+  confirmations: Record<string, string>,
+): void {
+  for (const [reviewId, confirmedValue] of Object.entries(confirmations)) {
+    const value = confirmedValue.trim();
+    if (!value) continue;
+
+    const questionText = reviewId.match(/^review-question-text-(\d+)$/);
+    if (questionText) {
+      const questionNumber = Number(questionText[1]);
+      const group = draft.sections
+        .flatMap((section) => section.questionGroups)
+        .find(
+          (candidate) =>
+            questionNumber >= candidate.startQuestion &&
+            questionNumber <= candidate.endQuestion,
+        );
+
+      if (group && !group.questions.some((question) => question.number === questionNumber)) {
+        const template = group.questions[0];
+        group.questions.push({
+          id: `q-${questionNumber}`,
+          number: questionNumber,
+          type: group.type,
+          prompt: value,
+          instructionConstraints: group.instructionConstraints,
+          evidence: group.evidence,
+          ...(template?.visualRegionId
+            ? { visualRegionId: template.visualRegionId }
+            : {}),
+          ...(template?.options ? { options: template.options } : {}),
+          ...(typeof template?.allowOptionReuse === 'boolean'
+            ? { allowOptionReuse: template.allowOptionReuse }
+            : {}),
+        });
+        group.questions.sort((left, right) => left.number - right.number);
+        draft.reviewItems = draft.reviewItems.filter(
+          (item) =>
+            !(
+              item.kind === 'QUESTION_TEXT' &&
+              item.questionNumber === questionNumber
+            ),
+        );
+      }
+      continue;
+    }
+
+    const optionList = reviewId.match(/^review-option-list-(\d+)$/);
+    if (optionList) {
+      const questionNumber = Number(optionList[1]);
+      const group = draft.sections
+        .flatMap((section) => section.questionGroups)
+        .find(
+          (candidate) =>
+            questionNumber >= candidate.startQuestion &&
+            questionNumber <= candidate.endQuestion,
+        );
+      const options = parseConfirmedOptions(value);
+      if (!group || options.length === 0) continue;
+
+      for (const question of group.questions) {
+        question.options = options;
+      }
+      draft.reviewItems = draft.reviewItems.filter(
+        (item) =>
+          !(
+            item.kind === 'OPTION_LIST' &&
+            typeof item.questionNumber === 'number' &&
+            item.questionNumber >= group.startQuestion &&
+            item.questionNumber <= group.endQuestion
+          ),
+      );
+    }
+  }
+}
+
 export function buildReadingImportModel(input: {
   bundle: ImportBundle;
   draft: ImportDraft;
@@ -45,6 +135,10 @@ export function buildReadingImportModel(input: {
     visualRegions: input.visualRegions,
   });
   structuredDraft.title = input.bundle.title;
+  applySemanticStructureConfirmations(
+    structuredDraft,
+    input.bundle.semanticConfirmations ?? {},
+  );
 
   const questions = structuredDraft.sections.flatMap((section) =>
     section.questionGroups.flatMap((group) => group.questions),

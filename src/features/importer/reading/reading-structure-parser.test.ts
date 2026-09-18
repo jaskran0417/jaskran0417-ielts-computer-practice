@@ -279,4 +279,44 @@ describe('buildStructuredReadingDraft', () => {
       'Label 4',
     ]);
   });
+  it('finds table-completion question numbers embedded inside PDF table rows', () => {
+    const draft = buildStructuredReadingDraft({
+      blocks: [
+        {
+          pageNumber: 9,
+          text: ['Passage 3', 'Spanish Exploration and Conquest', 'Passage text'].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 9, method: 'PDF_TEXT' }],
+        },
+        {
+          pageNumber: 11,
+          text: [
+            'Questions 28-31',
+            'Complete the table below.',
+            'Choose NO MORE THAN TWO WORDS AND/OR A NUMBER from reading passage 3 for each answer.',
+            '28. .......... the unification of Catholic Spain',
+            'October 12, 1492 arrival in 29. .......... Christopher Columbus',
+            '1493 Columbus sends two copies of a report sent to the king, 30. .......... and Luis de Santangel',
+            '1507 the naming of 31. .......... Martin Waldseemuller',
+          ].join('\n'),
+          evidence: [{ documentId: 'pdf', pageNumber: 11, method: 'PDF_TEXT' }],
+        },
+      ],
+      visualRegions: [{
+        id: 'table-page-11',
+        sourceDocumentId: 'pdf',
+        pageNumber: 11,
+        kind: 'TABLE',
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      }],
+    });
+
+    const questions = draft.sections[0]?.questionGroups[0]?.questions ?? [];
+    expect(questions.map((question) => question.number)).toEqual([28, 29, 30, 31]);
+    expect(draft.reviewItems).not.toContainEqual(
+      expect.objectContaining({ kind: 'QUESTION_TEXT', questionNumber: 29 }),
+    );
+    expect(draft.reviewItems).not.toContainEqual(
+      expect.objectContaining({ kind: 'QUESTION_TEXT', questionNumber: 30 }),
+    );
+  });
 });

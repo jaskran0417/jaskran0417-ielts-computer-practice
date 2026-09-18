@@ -44,12 +44,30 @@ describe('parseAnswerExpression', () => {
   it('requires review for ambiguous chained slash notation', () => {
     const result = parseAnswerExpression({
       questionNumber: 18,
-      raw: 'ninety/90 percent/per cent/%',
+      raw: 'red/blue/green',
       constraints: { maxWords: 2, numbersAllowed: true },
       evidence,
     });
 
     expect(result.verificationState).toBe('REVIEW_REQUIRED');
-    expect(result.canonical).toEqual(['ninety/90 percent/per cent/%']);
+    expect(result.canonical).toEqual(['red/blue/green']);
   });
+  it('expands a spaced whole-answer alternative without applying the optional article to both choices', () => {
+    expect(accepted('(the) queen / Isabella')).toEqual([
+      'isabella',
+      'queen',
+      'the queen',
+    ]);
+  });
+
+  it('expands the percentage alternatives used by the real Reading answer key', () => {
+    expect(accepted('ninety/90 percent/per cent/%')).toEqual([
+      '90 per cent',
+      '90 percent',
+      '90%',
+      'ninety per cent',
+      'ninety percent',
+    ]);
+  });
+
 });

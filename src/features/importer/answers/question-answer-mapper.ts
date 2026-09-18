@@ -59,6 +59,7 @@ export function mapAnswersToQuestions(input: {
       raw: entry.raw,
       constraints: entry.constraints,
       evidence: entry.evidence,
+      questionType: question.type,
     });
   }
 

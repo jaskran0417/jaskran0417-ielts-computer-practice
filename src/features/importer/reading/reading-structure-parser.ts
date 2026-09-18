@@ -16,22 +16,45 @@ import type {
   StructuredReadingDraft,
 } from './types';
 
-function numberedPrompts(text: string): Map<number, string> {
+function numberedPrompts(
+  text: string,
+  startQuestion: number,
+  endQuestion: number,
+): Map<number, string> {
   const prompts = new Map<number, string>();
-  const pattern = /^\s*(\d{1,3})[.)]?\s+(.+?)\s*$/gm;
-  let match: RegExpExecArray | null;
 
-  while ((match = pattern.exec(text)) !== null) {
-    const number = Number(match[1]);
-    const prompt = match[2]?.trim();
-    if (Number.isInteger(number) && prompt) {
-      prompts.set(number, prompt);
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const leading = line.match(/^(\d{1,3})[.)]?\s+(.+?)\s*$/);
+    if (leading) {
+      const number = Number(leading[1]);
+      const prompt = leading[2]?.trim();
+      if (
+        Number.isInteger(number) &&
+        number >= startQuestion &&
+        number <= endQuestion &&
+        prompt
+      ) {
+        prompts.set(number, prompt);
+      }
+    }
+
+    for (let number = startQuestion; number <= endQuestion; number += 1) {
+      if (prompts.has(number)) continue;
+      const embedded = line.match(
+        new RegExp(`(?:^|\\s)${number}[.)]\\s*(.+?)\\s*$`),
+      );
+      const prompt = embedded?.[1]?.trim();
+      if (prompt) {
+        prompts.set(number, prompt);
+      }
     }
   }
 
   return prompts;
 }
-
 function passageTextForBlocks(
   blocks: ReadingSourceBlock[],
   passageNumber: number,
@@ -120,7 +143,7 @@ function buildQuestionGroup(
     return null;
   }
 
-  const prompts = numberedPrompts(range.instructionText);
+  const prompts = numberedPrompts(range.instructionText, range.start, range.end);
   const constraints = parseInstructionConstraints(range.instructionText);
   const sharedOptions = recognition.type
     ? parseSharedReadingOptions({

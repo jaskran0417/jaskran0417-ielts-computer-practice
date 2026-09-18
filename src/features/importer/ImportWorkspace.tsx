@@ -9,6 +9,7 @@ import type {
 } from './bundle/domain';
 import { ConflictEditor } from './components/ConflictEditor';
 import { SemanticAnswerEditor } from './components/SemanticAnswerEditor';
+import { SemanticStructureEditor } from './components/SemanticStructureEditor';
 import { VisualAnchorEditor } from './components/VisualAnchorEditor';
 import { ImportSourceManager } from './components/ImportSourceManager';
 import { SourceEvidencePane } from './components/SourceEvidencePane';
@@ -443,33 +444,58 @@ export function ImportWorkspace({
                     <article key={item.id} className="import-field-card">
                       <div className="import-field-card-heading">
                         <strong>{item.label}</strong>
-                        <VerificationBadge state={item.state} />
+                        <div className="import-field-card-heading-actions">
+                          {requiresReview &&
+                          (item.kind === 'QUESTION_TEXT' || item.kind === 'OPTION_LIST') ? (
+                            <button
+                              type="button"
+                              className="secondary-action import-review-action"
+                              aria-label={`Review & Confirm ${item.label}`}
+                              onClick={() =>
+                                setExpandedSemanticItemId(expanded ? null : item.id)
+                              }
+                            >
+                              Review & Confirm
+                            </button>
+                          ) : null}
+                          {requiresReview && item.kind === 'ANSWER_DEFINITION' ? (
+                            <button
+                              type="button"
+                              className="secondary-action import-review-action"
+                              aria-label={`Review & Confirm ${item.label}`}
+                              onClick={() =>
+                                setExpandedSemanticItemId(expanded ? null : item.id)
+                              }
+                            >
+                              Review & Confirm
+                            </button>
+                          ) : null}
+                          {requiresReview &&
+                          item.kind === 'VISUAL_ANCHOR' &&
+                          item.questionNumber &&
+                          visualAsset ? (
+                            <button
+                              type="button"
+                              className="secondary-action import-review-action"
+                              aria-label={`Set position for Question ${item.questionNumber}`}
+                              onClick={() =>
+                                setExpandedSemanticItemId(expanded ? null : item.id)
+                              }
+                            >
+                              Set position
+                            </button>
+                          ) : null}
+                          <VerificationBadge state={item.state} />
+                        </div>
                       </div>
-                      <p>{item.value ?? item.message ?? 'Review required'}</p>
-                      <div className="import-field-card-footer">
-                        <small>{item.critical ? 'Critical' : 'Non-critical'}</small>
-                        {requiresReview && item.kind === 'ANSWER_DEFINITION' ? (
-                          <button
-                            type="button"
-                            className="secondary-action"
-                            onClick={() => setExpandedSemanticItemId(expanded ? null : item.id)}
-                          >
-                            Review & Confirm {item.label}
-                          </button>
-                        ) : null}
-                        {requiresReview &&
-                        item.kind === 'VISUAL_ANCHOR' &&
-                        item.questionNumber &&
-                        visualAsset ? (
-                          <button
-                            type="button"
-                            className="secondary-action"
-                            onClick={() => setExpandedSemanticItemId(expanded ? null : item.id)}
-                          >
-                            Set position for Question {item.questionNumber}
-                          </button>
-                        ) : null}
-                      </div>
+                      {expanded &&
+                      (item.kind === 'QUESTION_TEXT' || item.kind === 'OPTION_LIST') ? (
+                        <SemanticStructureEditor
+                          kind={item.kind}
+                          initialValue={item.value ?? ''}
+                          onConfirm={(value) => confirmSemanticAnswer(item.id, value)}
+                        />
+                      ) : null}
                       {expanded && item.kind === 'ANSWER_DEFINITION' ? (
                         <SemanticAnswerEditor
                           initialValue={item.value ?? ''}
@@ -491,6 +517,10 @@ export function ImportWorkspace({
                           }
                         />
                       ) : null}
+                      <p>{item.value ?? item.message ?? 'Review required'}</p>
+                      <div className="import-field-card-footer">
+                        <small>{item.critical ? 'Critical' : 'Non-critical'}</small>
+                      </div>
                     </article>
                   );
                 })}
@@ -516,20 +546,19 @@ export function ImportWorkspace({
                     >
                       <div className="import-field-card-heading">
                         <strong>{field.kind}</strong>
-                        <VerificationBadge state={field.verification.state} />
-                      </div>
-                      <p>{fieldPreview(field)}</p>
-                      <div className="import-field-card-footer">
-                        <small>{field.critical ? 'Critical' : 'Non-critical'}</small>
-                        <button
-                          type="button"
-                          className="secondary-action"
-                          onClick={() => setSelectedFieldId(field.id)}
-                        >
-                          {field.critical && !isResolved(field)
-                            ? `Review & Confirm ${field.kind}`
-                            : `View evidence ${field.kind}`}
-                        </button>
+                        <div className="import-field-card-heading-actions">
+                          {field.critical && !isResolved(field) ? (
+                            <button
+                              type="button"
+                              className="secondary-action import-review-action"
+                              aria-label={`Review & Confirm ${field.kind}`}
+                              onClick={() => setSelectedFieldId(field.id)}
+                            >
+                              Review & Confirm
+                            </button>
+                          ) : null}
+                          <VerificationBadge state={field.verification.state} />
+                        </div>
                       </div>
                       {selectedFieldId === field.id &&
                       field.critical &&
@@ -540,6 +569,19 @@ export function ImportWorkspace({
                           onConfirm={confirmField}
                         />
                       ) : null}
+                      <p>{fieldPreview(field)}</p>
+                      <div className="import-field-card-footer">
+                        <small>{field.critical ? 'Critical' : 'Non-critical'}</small>
+                        {!field.critical || isResolved(field) ? (
+                          <button
+                            type="button"
+                            className="secondary-action"
+                            onClick={() => setSelectedFieldId(field.id)}
+                          >
+                            View evidence {field.kind}
+                          </button>
+                        ) : null}
+                      </div>
                     </article>
                   ))}
                 </div>
