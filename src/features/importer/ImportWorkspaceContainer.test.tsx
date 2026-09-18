@@ -137,7 +137,7 @@ describe('ImportWorkspaceContainer', () => {
     );
 
     await waitFor(() =>
-      expect(repository.bundles.at(-1)?.sourceDocuments[0]?.name).toBe(
+      expect(repository.bundles[repository.bundles.length - 1]?.sourceDocuments[0]?.name).toBe(
         'restored-reading.pdf',
       ),
     );
