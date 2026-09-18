@@ -26,10 +26,8 @@ const MODULES = new Set<TestCatalogModule>([
 
 export function summarizeStudentTest(test: StudentTestPackage): TestSummary {
   const modules = test.modules
-    .map((module) => module.kind)
-    .filter((kind): kind is TestCatalogModule =>
-      MODULES.has(kind as TestCatalogModule),
-    );
+    .map((module) => module.kind as TestCatalogModule)
+    .filter((kind) => MODULES.has(kind));
 
   return {
     testId: test.id,
