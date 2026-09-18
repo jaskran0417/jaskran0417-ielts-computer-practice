@@ -51,7 +51,9 @@ export function fieldsForAssignments(
       (assignment) =>
         assignment.sourceDocumentId === evidence.documentId &&
         inRanges(evidence.pageNumber, assignment.pageRanges) &&
-        (!assignment.region || sameRegion(evidence.region, assignment.region)),
+        (assignment.region
+          ? Boolean(field.sourceRegion && sameRegion(field.sourceRegion, assignment.region))
+          : !field.sourceRegion),
     ));
   });
 }
