@@ -241,4 +241,42 @@ describe('buildStructuredReadingDraft', () => {
     expect(questions[1]?.options?.[3]).toEqual({ id: 'D', label: 'Four' });
   });
 
+
+  it('creates deterministic diagram label prompts when labels live only inside the image', () => {
+    const draft = buildStructuredReadingDraft({
+      blocks: [
+        {
+          pageNumber: 1,
+          text: ['Passage 1', 'Visual passage', 'Passage text'].join('\n'),
+          evidence: [evidence(1)],
+        },
+        {
+          pageNumber: 3,
+          text: [
+            'Questions 1-4',
+            'Label the diagram below with the names of the layers of the sun.',
+            'Choose NO MORE THAN TWO WORDS from the reading passage for each answer.',
+          ].join('\n'),
+          evidence: [evidence(3)],
+        },
+      ],
+      visualRegions: [
+        {
+          id: 'diagram-page-3',
+          sourceDocumentId: 'reading-pdf',
+          pageNumber: 3,
+          kind: 'DIAGRAM',
+          crop: { x: 0, y: 0, width: 1, height: 1 },
+        },
+      ],
+    });
+
+    const questions = draft.sections[0]?.questionGroups[0]?.questions ?? [];
+    expect(questions.map((question) => question.prompt)).toEqual([
+      'Label 1',
+      'Label 2',
+      'Label 3',
+      'Label 4',
+    ]);
+  });
 });
