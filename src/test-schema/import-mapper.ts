@@ -22,9 +22,12 @@ const PROTECTED_STUDENT_KEYS = new Set([
   'answerKeys',
   'answerDefinitions',
   'protectedAnswers',
+  'accepted',
+  'acceptedOptionIds',
+  'canonical',
 ]);
 
-function containsProtectedAnswerData(value: unknown): boolean {
+export function containsProtectedAnswerData(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.some(containsProtectedAnswerData);
   }
