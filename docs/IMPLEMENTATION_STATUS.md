@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 This file is the canonical resume checkpoint for implementation work. When a chat or tool run stops unexpectedly, read this file and the latest GitHub branch/CI state before continuing.
 
@@ -25,6 +25,17 @@ This file is the canonical resume checkpoint for implementation work. When a cha
 - Netlify production deployment.
 
 ### Reading player
+
+Latest verified branch: `feat/authentic-reading-experience` (merge/deployment tracked in GitHub).
+
+- Pre-test instructions before the timer starts; Practice/Mock mode shown in the exam header.
+- Continuous questions within a part; part navigation and previous/next controls.
+- Inline completion gaps, interactive matching banks, and required-count multi-select progress.
+- Save status, failed-save retry, serialized writes and safe handling of restoration failures.
+- Connected-artwork crop when supported, full image/zoom controls, intact image geometry and smaller anchor boxes.
+- PDF paragraph reflow and wrapped-question continuation fixes.
+- Completion recognisers and word-bank preservation with missing-bank review.
+- See `docs/architecture/reading-experience-audit.md` for tested coverage and remaining limitations.
 
 - Reading exam player.
 - Question navigation.
@@ -92,7 +103,9 @@ Completed and merged:
 
 Still pending as compatibility/acceptance work:
 
-- Final live-browser acceptance of the user's exact Reading PDF after re-import/re-publish, including confirmation that the smart visual crop and saved anchors align correctly on the supplied diagram/table.
+- Exact supplied PDF browser import/publication and desktop/mobile viewport checks completed on 2026-09-19; real-device acceptance remains useful.
+- Multi-select numbered answer-slot import/scoring remains incomplete and must not be presented as fully supported.
+- Arbitrary complex summary/flow-chart layout reconstruction still requires review.
 - Windows 7 browser smoke test for the Reading path.
 
 ### Phase B — Listening

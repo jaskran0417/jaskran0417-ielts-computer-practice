@@ -48,10 +48,16 @@ function numberedPrompts(
   endQuestion: number,
 ): Map<number, string> {
   const prompts = new Map<number, string>();
+  let current: number | null = null;
 
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) continue;
+    if (/^(?:Questions?\s+\d|[A-Z]\s*[.)]|List of Headings|E\.?g\.?\s|Example\b)/i.test(line)
+      || isPracticeFooterStart(line)) {
+      current = null;
+      continue;
+    }
 
     const leading = line.match(/^(\d{1,3})[.)]?\s+(.+?)\s*$/);
     if (leading) {
@@ -64,9 +70,12 @@ function numberedPrompts(
         prompt
       ) {
         prompts.set(number, prompt);
+        current = number;
+        continue;
       }
     }
 
+    let foundEmbedded = false;
     for (let number = startQuestion; number <= endQuestion; number += 1) {
       if (prompts.has(number)) continue;
       const embedded = line.match(
@@ -75,7 +84,12 @@ function numberedPrompts(
       const prompt = embedded?.[1]?.trim();
       if (prompt) {
         prompts.set(number, prompt);
+        current = number;
+        foundEmbedded = true;
       }
+    }
+    if (!foundEmbedded && current !== null) {
+      prompts.set(current, `${prompts.get(current)} ${line}`);
     }
   }
 
@@ -100,15 +114,15 @@ function passageTextForBlocks(
   for (const block of passageBlocks) {
     let lines = block.text
       .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
+      .map((line) => line.trim());
 
     if (block.pageNumber === passageStartPage) {
       const passageIndex = lines.findIndex((line) =>
         new RegExp(`^Passage\\s+${passageNumber}\\b`, 'i').test(line),
       );
       if (passageIndex < 0) continue;
-      lines = lines.slice(passageIndex + 2);
+      const titleIndex = lines.findIndex((line, index) => index > passageIndex && line.length > 0);
+      lines = lines.slice(titleIndex + 1);
     }
 
     const firstQuestionIndex = lines.findIndex((line) =>
@@ -118,7 +132,16 @@ function passageTextForBlocks(
       lines = lines.slice(0, firstQuestionIndex);
     }
 
-    result.push(...cleanPassagePageLines(lines));
+    const cleaned = cleanPassagePageLines(lines);
+    const paragraphs = cleaned.some(line => !line)
+      ? cleaned.join('\n').split(/\n\s*\n/).map(text => text.replace(/\n/g, ' ').trim()).filter(Boolean)
+      : cleaned.filter(Boolean);
+    // Join a sentence continued across a physical PDF page boundary.
+    const previous = result[result.length - 1];
+    if (previous && paragraphs[0] && !/[.!?:]["'”’)]?$/.test(previous) && /^[a-z]/.test(paragraphs[0])) {
+      result[result.length - 1] = `${previous} ${paragraphs.shift()}`;
+    }
+    result.push(...paragraphs);
   }
 
   return result;
@@ -223,6 +246,8 @@ function buildQuestionGroup(
     ) {
       question.options = sharedOptions;
       question.allowOptionReuse = /more than once/i.test(range.instructionText);
+    } else if (sharedOptions.length > 0) {
+      question.options = sharedOptions;
     }
 
     if (
@@ -230,7 +255,9 @@ function buildQuestionGroup(
         recognition.type === 'MATCHING_INFORMATION' ||
         recognition.type === 'MATCHING_HEADINGS' ||
         recognition.type === 'MATCHING_FEATURES' ||
-        recognition.type === 'MATCHING_SENTENCE_ENDINGS') &&
+        recognition.type === 'MATCHING_SENTENCE_ENDINGS' ||
+        (['SUMMARY_COMPLETION', 'NOTE_COMPLETION', 'SENTENCE_COMPLETION', 'FLOW_CHART_COMPLETION'].includes(recognition.type)
+          && /\b(?:box|list)\b/i.test(range.instructionText))) &&
       (!question.options || question.options.length === 0)
     ) {
       reviewItems.push({

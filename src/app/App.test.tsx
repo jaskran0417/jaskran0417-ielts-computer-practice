@@ -89,6 +89,19 @@ class EmptyAttemptRepository implements AttemptRepository {
 }
 
 describe('App session flow', () => {
+  it('shows instructions before starting a timed attempt', async () => {
+    const user = userEvent.setup();
+    render(<App repository={new EmptyAttemptRepository()} testCatalog={new FakeTestCatalog([importedReadingTest])} />);
+    await screen.findByRole('option', { name: 'Imported Reading Test' });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Published test' }), 'version-imported-1');
+    await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
+    await user.click(screen.getByRole('radio', { name: 'Mock test' }));
+    await user.click(screen.getByRole('button', { name: 'Create session' }));
+    expect(await screen.findByRole('heading', { name: 'Before you begin' })).toBeInTheDocument();
+    expect(screen.queryByText('Time remaining')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start Reading' }));
+    expect(await screen.findByText('Mock test · IELTS-style computer test')).toBeInTheDocument();
+  });
   it('starts in the modern session setup workspace', () => {
     render(<App repository={new EmptyAttemptRepository()} nowMs={1_000} />);
 
@@ -141,6 +154,7 @@ describe('App session flow', () => {
     );
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('button', { name: 'Create session' }));
+    await user.click(await screen.findByRole('button', { name: 'Start Reading' }));
 
     expect(await screen.findByText('The Layers of the Sun')).toBeInTheDocument();
     expect(screen.queryByText('Urban green spaces')).not.toBeInTheDocument();
@@ -163,6 +177,7 @@ describe('App session flow', () => {
     );
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('button', { name: 'Create session' }));
+    await user.click(await screen.findByRole('button', { name: 'Start Reading' }));
 
     expect(await screen.findByRole('heading', { name: 'Reading' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Primary navigation' })).not.toBeInTheDocument();
@@ -233,6 +248,7 @@ describe('App session flow', () => {
     );
     await user.click(screen.getByRole('checkbox', { name: 'Reading' }));
     await user.click(screen.getByRole('button', { name: 'Create session' }));
+    await user.click(await screen.findByRole('button', { name: 'Start Reading' }));
 
     const choices = await screen.findAllByRole('radio');
     await user.click(choices[0]!);

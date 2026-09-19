@@ -98,6 +98,20 @@ function verifiedReview(): SemanticReviewItem[] {
 }
 
 describe('prepareReadingPublication', () => {
+  it('retains a completion word bank in the student package', () => {
+    const draft = structuredDraft();
+    const question = draft.sections[0].questionGroups[0].questions[0];
+    question.type = 'SUMMARY_COMPLETION';
+    question.prompt = 'Cities need ____.';
+    const result = prepareReadingPublication({ testId: 'test-1', versionId: 'version-1',
+      structuredDraft: draft, answerCoverage: answers(), reviewItems: verifiedReview(),
+      visualAnchors: [], visualAssets: {} });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected publication');
+    expect(result.value.studentPackage.modules[0].sections[0].questionGroups[0].questions[0])
+      .toMatchObject({ type: 'SUMMARY_COMPLETION', options: question.options });
+  });
+
   it('creates a runnable student package while keeping protected answers separate', () => {
     const result = prepareReadingPublication({
       testId: 'test-1',

@@ -121,6 +121,7 @@ function mapQuestion(input: {
         question: {
           ...base,
           type: question.type,
+          ...(question.options?.length ? { options: question.options } : {}),
         },
       };
 

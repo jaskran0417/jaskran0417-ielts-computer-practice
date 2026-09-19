@@ -24,11 +24,13 @@ export function MultiSelectQuestion({
   return (
     <fieldset className="question-options" disabled={disabled}>
       <legend className="sr-only">Question {question.number} multiple choice</legend>
+      <p className="selection-count" role="status">{value.length} of {question.maxSelections} selected</p>
       {question.options.map((option) => (
         <label className="choice-row" key={option.id}>
           <input
             type="checkbox"
             checked={value.includes(option.id)}
+            disabled={!value.includes(option.id) && value.length >= question.maxSelections}
             onChange={() => toggle(option.id)}
           />
           <span className="choice-letter">{option.id}</span>

@@ -69,8 +69,8 @@ export function AppShell({
         <div className="sidebar-status">
           <span className="status-dot" aria-hidden="true" />
           <span>
-            <strong>Local-first</strong>
-            <small>Core sessions work offline</small>
+            <strong>Saved on this device</strong>
+            <small>Tests and practice attempts</small>
           </span>
         </div>
       </aside>
@@ -103,7 +103,7 @@ export function AppShell({
           </div>
           <div className="topbar-status" title="Changes are saved locally first">
             <span className="status-dot" aria-hidden="true" />
-            Offline ready
+            Device workspace
           </div>
         </header>
 

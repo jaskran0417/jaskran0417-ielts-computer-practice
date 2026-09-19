@@ -24,8 +24,8 @@ export function VisualAnchorEditor({
   onConfirm(anchor: NormalizedRect): void;
 }) {
   const [anchor, setAnchor] = useState<NormalizedRect | null>(initialAnchor ?? null);
-  const [boxWidth, setBoxWidth] = useState(initialAnchor?.width ?? 0.22);
-  const [boxHeight, setBoxHeight] = useState(initialAnchor?.height ?? 0.07);
+  const [boxWidth, setBoxWidth] = useState(initialAnchor?.width ?? 0.18);
+  const [boxHeight, setBoxHeight] = useState(initialAnchor?.height ?? 0.03);
   const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
   const previewCrop = useMemo(
     () => (anchor ? visualPresentationCrop([anchor], visualKind) : null),
@@ -109,7 +109,7 @@ export function VisualAnchorEditor({
           <input
             aria-label="Answer box width"
             type="range"
-            min="10"
+            min="4"
             max="50"
             value={Math.round(boxWidth * 100)}
             onChange={(event) => resize(Number(event.currentTarget.value) / 100, boxHeight)}
@@ -120,7 +120,7 @@ export function VisualAnchorEditor({
           <input
             aria-label="Answer box height"
             type="range"
-            min="4"
+            min="1"
             max="20"
             value={Math.round(boxHeight * 100)}
             onChange={(event) => resize(boxWidth, Number(event.currentTarget.value) / 100)}

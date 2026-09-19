@@ -5,6 +5,7 @@ import type { ImportFileProcessor } from '../features/importer/ImportWorkspace';
 import { ImportWorkspaceContainer } from '../features/importer/ImportWorkspaceContainer';
 import { createLocalImportProcessor } from '../features/importer/local-file-processor';
 import { ReadingExam } from '../features/reading/ReadingExam';
+import { ReadingReady } from '../features/reading/ReadingReady';
 import { SessionResult } from '../features/results/SessionResult';
 import { SessionBuilder } from '../features/sessions/SessionBuilder';
 import { IndexedDbSessionRepository } from '../session/indexeddb-session-repository';
@@ -75,6 +76,7 @@ export default function App({
   );
   const [session, setSession] = useState<SessionConfig | null>(null);
   const [activeTest, setActiveTest] = useState<StudentTestPackage | null>(null);
+  const [ready, setReady] = useState(false);
   const [publishedTests, setPublishedTests] = useState<TestSummary[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [sessionResult, setSessionResult] = useState<SessionResultSummary | null>(null);
@@ -104,6 +106,7 @@ export default function App({
         config.testVersionId,
       );
       setActiveTest(test);
+      setReady(false);
       setSession(config);
       setCatalogError(null);
       void sessions.saveSession(config).catch(() => {
@@ -241,6 +244,9 @@ export default function App({
     return (
       <AppShell>
         <SessionResult summary={sessionResult} />
+        <button type="button" className="primary-action" onClick={() => {
+          setSessionResult(null); setSession(null); setReady(false);
+        }}>Back to tests</button>
       </AppShell>
     );
   }
@@ -289,9 +295,13 @@ export default function App({
     );
   }
 
+  if (!ready) return <ReadingReady test={activeTest} mode={session.mode}
+    onStart={() => setReady(true)} onBack={() => setSession(null)} />;
+
   return (
     <ExamProvider test={activeTest} repository={repository} nowMs={nowMs}>
-      <ReadingExam test={activeTest} onSubmit={scoreSubmittedReading} now={examNow} />
+      {catalogError && <div className="exam-result-error" role="alert">{catalogError}. Your answers are locked in this session.</div>}
+      <ReadingExam test={activeTest} mode={session.mode} onSubmit={scoreSubmittedReading} now={examNow} />
     </ExamProvider>
   );
 }

@@ -3,6 +3,13 @@ import { recognizeReadingQuestionType } from './question-type-recognizers';
 
 describe('recognizeReadingQuestionType', () => {
   it.each([
+    ['Complete the sentences below. ONE WORD ONLY.', '', false, false, 'SENTENCE_COMPLETION'],
+    ['Complete the summary using words from the box A-F.', '', false, false, 'SUMMARY_COMPLETION'],
+    ['Complete the notes below. NO MORE THAN TWO WORDS.', '', false, false, 'NOTE_COMPLETION'],
+    ['Complete the flow-chart below.', '', false, false, 'FLOW_CHART_COMPLETION'],
+    ['Choose TWO letters, A-E.', '', false, false, 'MULTI_SELECT'],
+    ['Choose THREE correct answers.', '', false, false, 'MULTI_SELECT'],
+
     [
       'Questions 1-4 Label the diagram below. Choose NO MORE THAN TWO WORDS.',
       '',
