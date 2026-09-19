@@ -66,11 +66,11 @@ describe('createLocalImportProcessor', () => {
         critical: true,
         verification: {
           state: 'VERIFIED',
-          normalizedValue: 'Urban libraries are changing.\nChoose ONE WORD ONLY.',
+          normalizedValue: 'Urban libraries are changing.\n\nChoose ONE WORD ONLY.',
         },
       });
       expect(draft.fields[0].verification.passA).toMatchObject({
-        value: 'Urban libraries are changing.\nChoose ONE WORD ONLY.',
+        value: 'Urban libraries are changing.\n\nChoose ONE WORD ONLY.',
         evidence: {
           pageNumber: 1,
           method: 'PDF_TEXT',

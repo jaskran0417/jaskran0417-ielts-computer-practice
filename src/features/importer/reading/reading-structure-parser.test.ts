@@ -25,6 +25,20 @@ function allQuestions(
 }
 
 describe('buildStructuredReadingDraft', () => {
+  it('retains wrapped question sentences instead of dropping their continuation', () => {
+    const draft = buildStructuredReadingDraft({ blocks: [{ pageNumber: 1, evidence: [],
+      text: 'Passage 1\nCity parks\nParks offer green space.\nQuestions 1-2\nTRUE FALSE NOT GIVEN\n1. The researchers studied\nboth large and small parks.\n2. Every park was\nvisited twice.\nNote: This is not a real IELTS test.' }], visualRegions: [] });
+    expect(draft.sections[0].questionGroups[0].questions.map(question => question.prompt))
+      .toEqual(['The researchers studied both large and small parks.', 'Every park was visited twice.']);
+  });
+  it('requires review when a completion word bank cannot be extracted', () => {
+    const draft = buildStructuredReadingDraft({ blocks: [{ pageNumber: 1, evidence: [],
+      text: 'Passage 1\nCity parks\nParks offer green space.\nQuestions 1-2\nComplete the summary using words from the box A-C.\n1. Parks provide ____.\n2. Cities need ____.' }], visualRegions: [] });
+    expect(draft.reviewItems).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'OPTION_LIST', questionNumber: 1 }),
+      expect.objectContaining({ kind: 'OPTION_LIST', questionNumber: 2 }),
+    ]));
+  });
   it('builds three passages and forty typed questions from the fixture', () => {
     const draft = buildStructuredReadingDraft({
       blocks: sourceBlocks(),

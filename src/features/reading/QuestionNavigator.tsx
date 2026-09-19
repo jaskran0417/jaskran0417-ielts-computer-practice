@@ -1,13 +1,10 @@
 import type { StudentQuestion } from '../../test-schema/types';
 import { useExam } from '../exam/ExamProvider';
+import { isQuestionAnswered } from './answer-completeness';
 
 interface QuestionNavigatorProps {
   questions: StudentQuestion[];
   onNavigate?(questionId: string): void;
-}
-
-function hasAnswer(value: string | string[] | undefined): boolean {
-  return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
 }
 
 export function QuestionNavigator({ questions, onNavigate }: QuestionNavigatorProps) {
@@ -16,7 +13,7 @@ export function QuestionNavigator({ questions, onNavigate }: QuestionNavigatorPr
   return (
     <nav className="question-navigator" aria-label="Question navigation">
       {questions.map((question) => {
-        const answered = hasAnswer(state.answers[question.id]);
+        const answered = isQuestionAnswered(question, state.answers[question.id]);
         const reviewed = state.reviewQuestionIds.includes(question.id);
         const current = state.currentQuestionId === question.id;
 

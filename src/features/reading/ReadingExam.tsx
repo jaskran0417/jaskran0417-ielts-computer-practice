@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type { SessionMode } from '../../session/types';
+import './exam-experience.css';
+import { isQuestionAnswered } from './answer-completeness';
 import { remainingSeconds } from '../../exam-engine/time';
 import type {
   ExamAttemptState,
@@ -17,6 +20,7 @@ interface ReadingExamProps {
   test: StudentTestPackage;
   onSubmit?(attempt: ExamAttemptState): void | Promise<void>;
   now?: () => number;
+  mode?: SessionMode;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -25,8 +29,12 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps) {
-  const { state, dispatch } = useExam();
+export function ReadingExam({ test, onSubmit, now = Date.now, mode = 'PRACTICE' }: ReadingExamProps) {
+  const { state, dispatch, saveStatus, retrySave } = useExam();
+  const [textSize, setTextSize] = useState(16);
+  const [showHelp, setShowHelp] = useState(false);
+  const questionsPaneRef = useRef<HTMLElement | null>(null);
+  const passagePaneRef = useRef<HTMLElement | null>(null);
   const [nowMs, setNowMs] = useState(() => now());
   const [pendingSelection, setPendingSelection] = useState<PassageTextRange | null>(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -75,7 +83,22 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
     window.getSelection()?.removeAllRanges();
   }, [activeSection.passage.id]);
 
-  const displayInstruction = readingGroupDisplayInstruction(activeGroup.instruction);
+  const activeIndex = allQuestions.findIndex(question => question.id === activeQuestion.id);
+  const sectionQuestions = activeSection.questionGroups.flatMap(group => group.questions);
+  function navigateTo(questionId: string) {
+    dispatch({ type: 'NAVIGATE', questionId });
+    setMobilePane('QUESTIONS');
+    window.requestAnimationFrame(() => {
+      const target = Array.from(questionsPaneRef.current?.querySelectorAll<HTMLElement>('[data-question-id]') ?? [])
+        .find(element => element.dataset.questionId === questionId);
+      target?.scrollIntoView?.({ block: 'nearest', behavior: 'auto' });
+      target?.querySelector<HTMLElement>('input, select, .matching-dropzone')?.focus({ preventScroll: true });
+    });
+  }
+  useEffect(() => {
+    if (passagePaneRef.current) passagePaneRef.current.scrollTop = 0;
+    if (questionsPaneRef.current) questionsPaneRef.current.scrollTop = 0;
+  }, [activeSection.id]);
   const timeLeft = remainingSeconds(state, nowMs);
   const timeUrgency =
     state.durationSeconds > 0 && timeLeft / state.durationSeconds <= 0.1
@@ -85,10 +108,7 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
         : null;
   const unansweredCount = useMemo(
     () =>
-      allQuestions.filter((question) => {
-        const answer = state.answers[question.id];
-        return answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
-      }).length,
+      allQuestions.filter(question => !isQuestionAnswered(question, state.answers[question.id])).length,
     [allQuestions, state.answers],
   );
   const passageHighlights = state.highlights.filter(
@@ -207,11 +227,19 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
   }, [showSubmitConfirm]);
 
   return (
-    <main className="exam-shell">
+    <main className="exam-shell authentic-exam" style={{ '--exam-text-size': `${textSize}px` } as CSSProperties}>
       <header className="exam-header">
         <div>
-          <span className="exam-kicker">Computer Test Practice</span>
+          <span className="exam-kicker">{mode === 'MOCK' ? 'Mock test' : 'Practice'} · IELTS-style computer test</span>
           <h1>{readingModule.title}</h1>
+        </div>
+        <div className="exam-header-tools">
+          <label className="exam-text-size">Text size
+            <select aria-label="Text size" value={textSize} onChange={event => setTextSize(Number(event.target.value))}>
+              <option value={16}>Standard</option><option value={18}>Large</option><option value={20}>Extra large</option>
+            </select>
+          </label>
+          <button type="button" className="exam-help-button" aria-expanded={showHelp} onClick={() => setShowHelp(value => !value)}>Help</button>
         </div>
         <div
           className={`timer${timeUrgency ? ` timer-${timeUrgency}` : ''}`}
@@ -222,6 +250,17 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
         </div>
       </header>
 
+      <div className="exam-session-bar">
+        <span>{allQuestions.length - unansweredCount} of {allQuestions.length} answered</span>
+        {saveStatus === 'ERROR' ? <span role="alert" className="save-error">Answers are not saved. <button type="button" onClick={retrySave}>Retry saving</button></span>
+          : <span role="status">{saveStatus === 'SAVING' ? 'Saving answers…' : 'All answers saved'}</span>}
+      </div>
+      {showHelp && <aside className="exam-help-panel" aria-label="Test help">
+        <strong>Working through your test</strong>
+        <p>Read the instructions for each question group. Select one answer for radio questions or the requested number for checkboxes. Type into gaps; for matching, choose a bank option then an answer space, or drag it there.</p>
+        <p>Move freely between parts and questions. Review marks are reminders, not answers. Select passage text to highlight it or add a note. The timer keeps running while you review or refresh.</p>
+        <button type="button" onClick={() => setShowHelp(false)}>Close help</button>
+      </aside>}
       <nav className="mobile-pane-switcher" aria-label="Reading view">
         <button
           type="button"
@@ -242,9 +281,9 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
       </nav>
 
       <section className="reading-workspace" data-mobile-pane={mobilePane.toLowerCase()}>
-        <article className="passage-pane" aria-label="Reading passage">
+        <article ref={passagePaneRef} className="passage-pane" aria-label="Reading passage">
           <div className="pane-heading">
-            <span>{activeSection.title}</span>
+            <span>Part {readingModule.sections.indexOf(activeSection) + 1}</span>
             <h2>{activeSection.passage.title}</h2>
             <PassageTools
               passageTitle={activeSection.passage.title}
@@ -260,6 +299,7 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
             ref={passageCopyRef}
             className="passage-copy"
             onMouseUp={capturePassageSelection}
+            onTouchEnd={() => window.setTimeout(capturePassageSelection, 80)}
             onKeyUp={capturePassageSelection}
           >
             {activeSection.passage.paragraphs.map((paragraph, paragraphIndex) => {
@@ -310,43 +350,46 @@ export function ReadingExam({ test, onSubmit, now = Date.now }: ReadingExamProps
           </div>
         </article>
 
-        <section className="questions-pane" aria-label="Questions">
-          <header className="question-group-header">
-            <strong>
-              Questions {activeGroup.questions[0]?.number ?? activeQuestion.number}–
-              {activeGroup.questions[activeGroup.questions.length - 1]?.number ?? activeQuestion.number}
-            </strong>
-            {displayInstruction ? <p>{displayInstruction}</p> : null}
-          </header>
-
-          <ReadingQuestionGroup
-            group={activeGroup}
-            activeQuestionId={activeQuestion.id}
-            answers={state.answers}
-            reviewQuestionIds={state.reviewQuestionIds}
-            disabled={state.status !== 'ACTIVE'}
-            assetUrlById={assetUrlById}
-            onNavigate={(questionId) =>
-              dispatch({ type: 'NAVIGATE', questionId })
-            }
-            onAnswer={(questionId, value) =>
-              dispatch({ type: 'ANSWER_CHANGED', questionId, value })
-            }
-            onToggleReview={(questionId) =>
-              dispatch({ type: 'TOGGLE_REVIEW', questionId })
-            }
-          />
+        <section ref={questionsPaneRef} className="questions-pane" aria-label="Questions">
+          {activeSection.questionGroups.map(group => <section className="exam-question-group" key={group.id} aria-label={`Questions ${group.questions[0]?.number} to ${group.questions[group.questions.length - 1]?.number}`}>
+            <header className="question-group-header">
+              <h2>Questions {group.questions[0]?.number}–{group.questions[group.questions.length - 1]?.number}</h2>
+              <p>{readingGroupDisplayInstruction(group.instruction)}</p>
+            </header>
+            <ReadingQuestionGroup
+              group={group}
+              activeQuestionId={activeQuestion.id}
+              answers={state.answers}
+              reviewQuestionIds={state.reviewQuestionIds}
+              disabled={state.status !== 'ACTIVE'}
+              assetUrlById={assetUrlById}
+              onNavigate={questionId => {
+                if (questionId !== state.currentQuestionId) dispatch({ type: 'NAVIGATE', questionId });
+              }}
+              onAnswer={(questionId, value) => dispatch({ type: 'ANSWER_CHANGED', questionId, value })}
+              onToggleReview={questionId => dispatch({ type: 'TOGGLE_REVIEW', questionId })}
+            />
+          </section>)}
         </section>
       </section>
 
       <footer className="exam-footer">
-        <QuestionNavigator
-          questions={allQuestions}
-          onNavigate={() => setMobilePane('QUESTIONS')}
-        />
+        <div className="exam-navigation-main">
+          <nav className="exam-part-tabs" aria-label="Reading parts">
+            {readingModule.sections.map((section, index) => {
+              const questions = section.questionGroups.flatMap(group => group.questions);
+              const answered = questions.filter(question => isQuestionAnswered(question, state.answers[question.id])).length;
+              return <button type="button" key={section.id} aria-current={section.id === activeSection.id ? 'page' : undefined}
+                onClick={() => { if (questions[0]) navigateTo(questions[0].id); }}>
+                Part {index + 1} <small>{answered}/{questions.length}</small>
+              </button>;
+            })}
+          </nav>
+          <QuestionNavigator questions={sectionQuestions} onNavigate={navigateTo} />
+        </div>
         <div className="footer-status">
-          <span className="status-key"><i className="answered-key" /> Answered</span>
-          <span className="status-key"><i className="review-key" /> Review</span>
+          <button type="button" aria-label="Previous question" disabled={activeIndex <= 0} onClick={() => navigateTo(allQuestions[activeIndex - 1].id)}>←</button>
+          <button type="button" aria-label="Next question" disabled={activeIndex >= allQuestions.length - 1} onClick={() => navigateTo(allQuestions[activeIndex + 1].id)}>→</button>
           <button
             type="button"
             className="primary-action"

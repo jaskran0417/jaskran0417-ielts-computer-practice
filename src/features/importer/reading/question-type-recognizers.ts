@@ -103,6 +103,25 @@ export function recognizeReadingQuestionType(
   }
 
   if (
+    /\bCHOOSE\s+(?:TWO|THREE|FOUR|FIVE|[2-5])\s+(?:(?:CORRECT|OF THE FOLLOWING)\s+)?(?:LETTERS|ANSWERS|OPTIONS)\b/.test(instruction)
+  ) {
+    return high('MULTI_SELECT', 'Instruction explicitly requests multiple selections');
+  }
+
+  if (/\bCOMPLETE\s+(?:THE\s+)?SUMMARY\b/.test(instruction)) {
+    return high('SUMMARY_COMPLETION', 'Instruction explicitly asks to complete a summary');
+  }
+  if (/\bCOMPLETE\s+(?:THE\s+)?NOTES?\b/.test(instruction)) {
+    return high('NOTE_COMPLETION', 'Instruction explicitly asks to complete notes');
+  }
+  if (/\bCOMPLETE\s+(?:THE\s+)?FLOW[ -]?CHART\b/.test(instruction)) {
+    return high('FLOW_CHART_COMPLETION', 'Instruction explicitly asks to complete a flow chart');
+  }
+  if (/\bCOMPLETE\s+(?:THE\s+)?SENTENCES?\b/.test(instruction)) {
+    return high('SENTENCE_COMPLETION', 'Instruction explicitly asks to complete sentences');
+  }
+
+  if (
     /\bCHOOSE\b.*\b(?:LETTER|LETTERS)\b/.test(instruction) &&
     /\bA\b.*\bB\b.*\bC\b.*\bD\b/.test(instruction) &&
     !/\bTWO\b.*\bLETTERS\b/.test(instruction)

@@ -120,7 +120,7 @@ function visualKindForPdfText(text: string): ImportVisualAssetRecord['kind'] | n
   return null;
 }
 
-function normalizedPdfText(page: ExtractedPdfPage): string {
+export function normalizedPdfText(page: ExtractedPdfPage): string {
   const items = page.items
     .filter((item) => item.text.trim().length > 0)
     .slice()
@@ -160,20 +160,14 @@ function normalizedPdfText(page: ExtractedPdfPage): string {
     }
   }
 
-  return lines
-    .sort((left, right) => left.centerY - right.centerY)
-    .map((line) =>
-      line.items
-        .slice()
-        .sort((left, right) => left.rect.x - right.rect.x)
-        .map((item) => item.text.trim())
-        .join(' ')
-        .replace(/[ \t]+/g, ' ')
-        .trim(),
-    )
-    .filter(Boolean)
-    .join('\n')
-    .trim();
+  const ordered = lines.sort((left, right) => left.centerY - right.centerY);
+  return ordered.map((line, index) => {
+    const text = line.items.slice().sort((left, right) => left.rect.x - right.rect.x)
+      .map(item => item.text.trim()).join(' ').replace(/[ \t]+/g, ' ').trim();
+    const previous = ordered[index - 1];
+    const paragraphGap = previous && line.centerY - previous.centerY > Math.max(previous.height, line.height) * 1.8;
+    return `${paragraphGap ? '\n' : ''}${text}`;
+  }).join('\n').trim();
 }
 
 function pdfTextRegion(page: ExtractedPdfPage): NormalizedRect | undefined {

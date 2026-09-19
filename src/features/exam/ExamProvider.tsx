@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   useState,
 } from 'react';
 import { createAttempt } from '../../exam-engine/create-attempt';
@@ -17,6 +18,8 @@ import { IndexedDbAttemptRepository } from '../../storage/indexeddb-attempt-repo
 interface ExamContextValue {
   state: ExamAttemptState;
   dispatch: Dispatch<ExamAction>;
+  saveStatus: 'SAVING' | 'SAVED' | 'ERROR';
+  retrySave(): void;
 }
 
 const ExamContext = createContext<ExamContextValue | null>(null);
@@ -37,6 +40,11 @@ export function ExamProvider({
 }: ExamProviderProps) {
   const [state, dispatch] = useReducer(examReducer, createAttempt(test, nowMs));
   const [hydrated, setHydrated] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'SAVING' | 'SAVED' | 'ERROR'>('SAVING');
+  const [saveRequest, setSaveRequest] = useState(0);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const latestSave = useRef(0);
+  const [restoreError, setRestoreError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,8 +60,7 @@ export function ExamProvider({
       })
       .catch(() => {
         if (!cancelled) {
-          // A storage read failure must not make the exam unusable.
-          setHydrated(true);
+          setRestoreError(true);
         }
       });
 
@@ -64,12 +71,25 @@ export function ExamProvider({
 
   useEffect(() => {
     if (!hydrated) return;
-
-    void repository.saveAttempt(state).catch(() => {
-      // Local persistence failure must not crash an active test UI.
-      // A visible sync/storage status surface is added in a later milestone.
+    const sequence = ++latestSave.current;
+    let active = true;
+    setSaveStatus('SAVING');
+    // Serialize writes: a delayed earlier save must never replace a newer answer.
+    saveQueue.current = saveQueue.current.catch(() => {}).then(() => repository.saveAttempt(state));
+    void saveQueue.current.then(() => {
+      if (active && sequence === latestSave.current) setSaveStatus('SAVED');
+    }, () => {
+      if (active && sequence === latestSave.current) setSaveStatus('ERROR');
     });
-  }, [hydrated, repository, state]);
+    return () => { active = false; };
+  }, [hydrated, repository, state, saveRequest]);
+
+  if (restoreError && !hydrated) {
+    return <div className="exam-loading" role="alert">
+      <div><p>Unable to restore saved answers. Reload to try again before starting the test.</p>
+        <button type="button" onClick={() => window.location.reload()}>Reload</button></div>
+    </div>;
+  }
 
   if (!hydrated) {
     return (
@@ -79,7 +99,8 @@ export function ExamProvider({
     );
   }
 
-  return <ExamContext.Provider value={{ state, dispatch }}>{children}</ExamContext.Provider>;
+  return <ExamContext.Provider value={{ state, dispatch, saveStatus,
+    retrySave: () => setSaveRequest(value => value + 1) }}>{children}</ExamContext.Provider>;
 }
 
 export function useExam(): ExamContextValue {

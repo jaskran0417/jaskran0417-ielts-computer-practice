@@ -161,7 +161,12 @@ export function parseSharedReadingOptions(input: {
 
   if (
     input.type === 'MATCHING_SENTENCE_ENDINGS' ||
-    input.type === 'MATCHING_FEATURES'
+    input.type === 'MATCHING_FEATURES' ||
+    input.type === 'SUMMARY_COMPLETION' ||
+    input.type === 'NOTE_COMPLETION' ||
+    input.type === 'SENTENCE_COMPLETION' ||
+    input.type === 'FLOW_CHART_COMPLETION' ||
+    input.type === 'MULTI_SELECT'
   ) {
     return parseExpectedAlphaOptions(
       input.pageText,

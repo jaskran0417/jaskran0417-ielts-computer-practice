@@ -104,6 +104,8 @@ export interface TextCompletionQuestion extends QuestionBase {
     | 'NOTE_COMPLETION'
     | 'FLOW_CHART_COMPLETION';
   placeholder?: string;
+  /** Optional word bank for completion tasks that select from a list. */
+  options?: ChoiceOption[];
 }
 
 export interface NormalizedQuestionRect {
